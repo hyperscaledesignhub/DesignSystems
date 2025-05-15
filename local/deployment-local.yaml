@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rate-limiter
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rate-limiter
+  namespace: rate-limiter
+  labels:
+    app: rate-limiter
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rate-limiter
+  template:
+    metadata:
+      labels:
+        app: rate-limiter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: rate-limiter
+        image: rate-limiter:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: REDIS_HOST
+          value: "redis.rate-limiter.svc.cluster.local"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: PORT
+          value: "8080"
+        - name: CONFIG_PATH
+          value: "/etc/rate-limiter/config.yaml"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/rate-limiter
+      volumes:
+      - name: config-volume
+        configMap:
+          name: rate-limiter-config
+      nodeSelector:
+        app: rate-limiter
+      tolerations:
+      - key: "app"
+        operator: "Equal"
+        value: "rate-limiter"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rate-limiter
+  namespace: rate-limiter
+spec:
+  selector:
+    app: rate-limiter
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rate-limiter-config
+  namespace: rate-limiter
+data:
+  config.yaml: |
+    rate_limiter:
+      algorithm: "sliding_window_log"
+      max_requests: 5
+      algorithms:
+        fixed_window:
+          window_size: 5000
+        sliding_window_counter:
+          window_size: 5000
+          precision: 1000
+          cleanup_interval: 30000
+          overlap_factor: 0.5
+        sliding_window_log:
+          window_size: 5000
+          precision: 1000
+          overlap_factor: 0.5
+        token_bucket:
+          refill_rate: 1
+        leaky_bucket:
+          leak_rate: 2
+      redis:
+        host: "redis.rate-limiter.svc.cluster.local"
+        port: 6379 
