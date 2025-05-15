@@ -1,0 +1,285 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-files
+  namespace: rate-limiter
+data:
+  test_eks_fixed_window.py: |
+    #!/usr/bin/env python3
+
+    import aiohttp
+    import asyncio
+    import logging
+    import time
+    from typing import Dict, List, Tuple
+    import json
+
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    # Test configuration
+    MAX_REQUESTS = 5  # Maximum requests per window
+    WINDOW_SIZE = 5.0  # Window size in seconds (matching config.yaml)
+    API_ENDPOINT = "http://rate-limiter.rate-limiter.svc.cluster.local:8080"  # Internal Kubernetes service URL
+
+    async def make_request(session: aiohttp.ClientSession, client_id: str) -> Tuple[int, Dict]:
+        """Make a request to the rate limiter API."""
+        try:
+            headers = {"X-Client-ID": client_id}
+            async with session.get(f"{API_ENDPOINT}/api/limited", headers=headers) as response:
+                data = await response.json()
+                return response.status, data
+        except Exception as e:
+            logger.error(f"Request failed: {e}")
+            return 500, {"error": str(e)}
+
+    async def test_rate_limiter_429():
+        """Test that rate limiter returns 429 after exceeding limit"""
+        # Configuration: 5 requests per 5 seconds
+        print(f"Configuration: {MAX_REQUESTS} requests per {WINDOW_SIZE} second(s)")
+        
+        async with aiohttp.ClientSession() as session:
+            # Add logging for timing
+            logger.info(f"Starting test at {time.time()}")
+            # Make requests within limit
+            print("\nTesting requests within limit...")
+            for i in range(MAX_REQUESTS):
+                status, data = await make_request(session, "test_client_1")
+                logger.info(f"Request {i+1} made at {time.time()}")
+                print(f"Request {i+1} Status {status}, Response: {data}")
+                assert status == 200, f"Expected 200, got {status}"
+            
+            # Make one more request to exceed limit
+            print("\nTesting rate limit exceeded...")
+            status, data = await make_request(session, "test_client_1")
+            logger.info(f"Exceeded limit request made at {time.time()}")
+            print(f"Request {MAX_REQUESTS+1} Status {status}, Response: {data}")
+            assert status == 429, f"Expected 429, got {status}"
+            
+            # Wait for window to reset with a small buffer
+            print(f"\nWaiting {WINDOW_SIZE + 0.1} second(s) for window to reset...")
+            await asyncio.sleep(WINDOW_SIZE + 0.1)
+            
+            # Make requests again after reset
+            print("\nTesting requests after reset...")
+            for i in range(MAX_REQUESTS):
+                status, data = await make_request(session, "test_client_1")
+                logger.info(f"Request {i+1} after reset made at {time.time()}")
+                print(f"Request {i+1} Status {status}, Response: {data}")
+                assert status == 200, f"Expected 200, got {status}"
+
+    if __name__ == "__main__":
+        print("Starting Fixed Window Rate Limiter Tests...")
+        asyncio.run(test_rate_limiter_429())
+        print("\nAll tests completed successfully!")
+
+  test_eks_rate_limiter.py: |
+    #!/usr/bin/env python3
+
+    import requests
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    def test_rate_limiter_429():
+        """Test that rate limiter returns 429 after exceeding limit"""
+        url = "http://rate-limiter.rate-limiter.svc.cluster.local:8080/api/limited"
+        headers = {'X-Client-ID': 'test_client_1'}
+        
+        # Maximum requests per second
+        max_requests = 10
+        
+        # Configuration: 10 requests per second
+        print(f"Configuration: {max_requests} requests per second")
+        
+        # Make requests within limit
+        print("\nTesting requests within limit...")
+        success_count = 0
+        rate_limited_count = 0
+        
+        # Make 20 concurrent requests (10 more than limit) with fewer worker threads
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = []
+            for i in range(20):
+                futures.append(executor.submit(requests.get, url, headers=headers))
+            
+            for i, future in enumerate(futures):
+                try:
+                    response = future.result()
+                    print(f"Request {i+1} Status {response.status_code}, Response: {response.json()}")
+                    if response.status_code == 200:
+                        success_count += 1
+                    elif response.status_code == 429:
+                        rate_limited_count += 1
+                except Exception as e:
+                    print(f"Request {i+1} failed: {str(e)}")
+        
+        print(f"\nResults:")
+        print(f"Successful requests: {success_count}")
+        print(f"Rate limited requests: {rate_limited_count}")
+        
+        # Verify we got rate limited
+        assert success_count <= max_requests, f"Expected at most {max_requests} successful requests, got {success_count}"
+        assert rate_limited_count > 0, "Expected at least one rate limited request"
+
+    if __name__ == "__main__":
+        test_rate_limiter_429()
+
+  test_eks_sliding_window_log.py: |
+    #!/usr/bin/env python3
+
+    import asyncio
+    import aiohttp
+    import logging
+    import time
+    from typing import Dict, List, Tuple
+    import sys
+    from datetime import datetime
+
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    # Configuration
+    API_ENDPOINT = "http://rate-limiter.rate-limiter.svc.cluster.local:8080"
+    ENDPOINT = f"{API_ENDPOINT}/api/limited"
+    MAX_REQUESTS = 5
+    WINDOW_SIZE = 5.0  # seconds (matching config.yaml)
+
+    class Response:
+        def __init__(self, status, data, timestamp):
+            self.status = status
+            self.data = data
+            self.timestamp = timestamp
+            self.remaining = data.get('remaining') if data else None
+            self.reset_time = data.get('reset_time') if data else None
+
+    async def make_request(session, client_id):
+        start_time = time.time()
+        try:
+            headers = {'X-Client-ID': client_id}
+            async with session.get(ENDPOINT, headers=headers) as response:
+                data = await response.json()
+                return Response(response.status, data, start_time)
+        except Exception as e:
+            logger.error(f"Request failed: {e}")
+            return None
+
+    async def test_sliding_window_log_basic():
+        logger.info("Starting Sliding Window Log Rate Limiter Tests")
+        logger.info(f"Configuration: {MAX_REQUESTS} requests per {WINDOW_SIZE}s window")
+        logger.info(f"Testing against endpoint: {ENDPOINT}\n")
+
+        client_id = f"test_client_{int(time.time() * 1000)}"
+        responses = []
+
+        async with aiohttp.ClientSession() as session:
+            # Make initial requests concurrently
+            initial_tasks = [make_request(session, client_id) for _ in range(MAX_REQUESTS)]
+            initial_responses = await asyncio.gather(*initial_tasks)
+            responses.extend([r for r in initial_responses if r])
+
+            # Verify all initial requests were successful
+            assert all(r.status == 200 for r in responses), \
+                "All initial requests should be successful"
+            assert len(responses) == MAX_REQUESTS, \
+                f"Expected {MAX_REQUESTS} successful requests, got {len(responses)}"
+
+            # Try one more request immediately (should be rate limited)
+            extra_response = await make_request(session, client_id)
+            if extra_response:
+                responses.append(extra_response)
+                assert extra_response.status == 429, "Request should be rate limited after limit reached"
+                assert extra_response.remaining == 0, "Rate limited request should show 0 remaining"
+
+            # Wait for window to reset
+            await asyncio.sleep(WINDOW_SIZE + 0.2)  # Add extra buffer for safety
+
+            # Try another request (should succeed)
+            final_response = await make_request(session, client_id)
+            if final_response:
+                responses.append(final_response)
+                assert final_response.status == 200, "Request after reset should succeed"
+                assert final_response.remaining == MAX_REQUESTS - 1, \
+                    f"Expected {MAX_REQUESTS - 1} remaining after reset, got {final_response.remaining}"
+
+  test_eks_sliding_window_counter.py: |
+    #!/usr/bin/env python3
+
+    import asyncio
+    import aiohttp
+    import logging
+    import time
+    from typing import Dict, List, Tuple
+    import sys
+    from datetime import datetime
+
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    # Configuration
+    API_ENDPOINT = "http://rate-limiter.rate-limiter.svc.cluster.local:8080"
+    ENDPOINT = f"{API_ENDPOINT}/api/limited"
+    MAX_REQUESTS = 5
+    WINDOW_SIZE = 5.0  # seconds (matching config.yaml)
+
+    class Response:
+        def __init__(self, status, data, timestamp):
+            self.status = status
+            self.data = data
+            self.timestamp = timestamp
+            self.remaining = data.get('remaining') if data else None
+            self.reset_time = data.get('reset_time') if data else None
+
+    async def make_request(session, client_id):
+        start_time = time.time()
+        try:
+            headers = {'X-Client-ID': client_id}
+            async with session.get(ENDPOINT, headers=headers) as response:
+                data = await response.json()
+                return Response(response.status, data, start_time)
+        except Exception as e:
+            logger.error(f"Request failed: {e}")
+            return None
+
+    async def test_sliding_window_counter_basic():
+        logger.info("Starting Sliding Window Counter Rate Limiter Tests")
+        logger.info(f"Configuration: {MAX_REQUESTS} requests per {WINDOW_SIZE}s window")
+        logger.info(f"Testing against endpoint: {ENDPOINT}\n")
+
+        client_id = f"test_client_{int(time.time() * 1000)}"
+        responses = []
+
+        async with aiohttp.ClientSession() as session:
+            # Make initial requests concurrently
+            initial_tasks = [make_request(session, client_id) for _ in range(MAX_REQUESTS)]
+            initial_responses = await asyncio.gather(*initial_tasks)
+            responses.extend([r for r in initial_responses if r])
+
+            # Verify all initial requests were successful
+            assert all(r.status == 200 for r in responses), \
+                "All initial requests should be successful"
+            assert len(responses) == MAX_REQUESTS, \
+                f"Expected {MAX_REQUESTS} successful requests, got {len(responses)}"
+
+            # Try one more request immediately (should be rate limited)
+            extra_response = await make_request(session, client_id)
+            if extra_response:
+                responses.append(extra_response)
+                assert extra_response.status == 429, "Request should be rate limited after limit reached"
+                assert extra_response.remaining == 0, "Rate limited request should show 0 remaining"
+
+            # Wait for window to reset
+            await asyncio.sleep(WINDOW_SIZE + 0.2)  # Add extra buffer for safety
+
+            # Try another request (should succeed)
+            final_response = await make_request(session, client_id)
+            if final_response:
+                responses.append(final_response)
+                assert final_response.status == 200, "Request after reset should succeed"
+                assert final_response.remaining == MAX_REQUESTS - 1, \
+                    f"Expected {MAX_REQUESTS - 1} remaining after reset, got {final_response.remaining}"
+
+    if __name__ == "__main__":
+        asyncio.run(test_sliding_window_counter_basic()) 
