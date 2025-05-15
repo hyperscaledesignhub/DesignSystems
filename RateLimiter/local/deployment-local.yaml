@@ -84,7 +84,7 @@ metadata:
 data:
   config.yaml: |
     rate_limiter:
-      algorithm: "sliding_window_log"
+      algorithm: "token_bucket"
       max_requests: 5
       algorithms:
         fixed_window:
