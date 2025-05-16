@@ -182,10 +182,10 @@ kubectl port-forward service/rate-limiter 8080:8080 -n rate-limiter
 5. Run algorithm-specific tests:
 ```bash
 # Set the base directory
-export HOME=<Base directory where RateLimiter folder is>
+export HOME=$PWD
 
 # Run specific algorithm test to verify rate limiting functionality
-PYTHONPATH=$PYTHONPATH:. $HOME/RateLimiter/venv/bin/python trigger-data/test_eks_sliding_window_log.py
+PYTHONPATH=$PYTHONPATH:. $HOME/venv/bin/python trigger-data/test_eks_sliding_window_log.py
 ```
 
 The test files under `trigger-data/` directory are used to verify that the rate limiting is working as expected for each algorithm. Each test simulates multiple requests to test the rate limiting behavior.
