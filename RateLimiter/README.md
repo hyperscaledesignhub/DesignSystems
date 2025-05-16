@@ -87,6 +87,32 @@ CONFIG_PATH=./config.yaml python app.py
 
 The service will start on port 8080 by default.
 
+### Testing the Local Rate Limiter
+
+You can test the rate limiter using curl or any HTTP client:
+
+```bash
+# Basic request
+curl http://localhost:8080/api/limited
+
+# With client ID header
+curl -H "X-Client-ID: test-client" http://localhost:8080/api/limited
+```
+
+The response will include:
+- `message`: Status of the request
+- `remaining`: Number of requests remaining in the current window
+- `reset_time`: Time until the rate limit resets (in seconds)
+
+Example response:
+```json
+{
+    "message": "Request processed successfully",
+    "remaining": 4,
+    "reset_time": 0.5
+}
+```
+
 ## API Endpoints
 
 ### Rate Limited Endpoint
