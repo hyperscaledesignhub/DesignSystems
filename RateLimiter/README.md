@@ -15,6 +15,12 @@ A distributed rate limiting service that implements multiple rate limiting algor
 - Configurable rate limits and algorithms
 - Support for client identification via headers or IP
 
+## Architecture
+
+![Rate Limiter Architecture](images/Rate-limiter-new.png)
+
+The diagram above illustrates the high-level architecture of the Rate Limiter service, showing the interaction between different components and the flow of requests through the system.
+
 ## Prerequisites
 
 - Python 3.8+
