@@ -113,21 +113,19 @@ Run all tests:
 python -m unittest discover -s distributed_ratelimit/tests
 ```
 
-## Docker Support
+## Local Kubernetes Deployment
 
-Build and run using Docker:
+1. Build and run using Docker:
 ```bash
 ./build-docker.sh
 ```
 
-## Local Kubernetes Deployment
-
-1. Create a local Kubernetes cluster using kind:
+2. Create a local Kubernetes cluster using kind:
 ```bash
 ./local/deploy-local.sh
 ```
 
-2. Configure the rate limiter algorithm in `deployment-local.yaml`:
+3. Configure the rate limiter algorithm in `deployment-local.yaml`:
 ```yaml
 # Inside config.yaml section
 rate_limiter:
@@ -135,12 +133,12 @@ rate_limiter:
   # ... other configuration ...
 ```
 
-3. Port forward the service:
+4. Port forward the service:
 ```bash
 kubectl port-forward service/rate-limiter 8080:8080 -n rate-limiter
 ```
 
-4. Run algorithm-specific tests:
+5. Run algorithm-specific tests:
 ```bash
 # Set the base directory
 export HOME=<Base directory where RateLimiter folder is>
