@@ -72,7 +72,7 @@ rate_limiter:
       leak_rate: 1
 ```
 
-## Running the Service
+## Running the Service Locally
 
 1. Start Redis server:
 ```bash
@@ -133,6 +133,19 @@ rate_limiter:
   # ... other configuration ...
 ```
 
+To change the rate limiting algorithm:
+1. Edit the `local/deployment-local.yaml` file and modify the algorithm value under the `config.yaml` section
+2. Supported algorithms:
+   - `fixed_window`
+   - `sliding_window_counter`
+   - `sliding_window_log`
+   - `token_bucket`
+   - `leaky_bucket`
+3. After changing the algorithm, run the restart script:
+```bash
+./local/restart-ratelimiter-deployment.sh
+```
+
 4. Port forward the service:
 ```bash
 kubectl port-forward service/rate-limiter 8080:8080 -n rate-limiter
@@ -143,9 +156,11 @@ kubectl port-forward service/rate-limiter 8080:8080 -n rate-limiter
 # Set the base directory
 export HOME=<Base directory where RateLimiter folder is>
 
-# Run specific algorithm test
-PYTHONPATH=$PYTHONPATH:. $HOME/RateLimiter/venv/bin/python trigger-data-oroginal-files/test_eks_sliding_window_log.py
+# Run specific algorithm test to verify rate limiting functionality
+PYTHONPATH=$PYTHONPATH:. $HOME/RateLimiter/venv/bin/python trigger-data/test_eks_sliding_window_log.py
 ```
+
+The test files under `trigger-data/` directory are used to verify that the rate limiting is working as expected for each algorithm. Each test simulates multiple requests to test the rate limiting behavior.
 
 Available test files for different algorithms:
 - `test_eks_sliding_window_log.py`
