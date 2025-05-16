@@ -169,7 +169,7 @@ To change the rate limiting algorithm:
    - `leaky_bucket`
 3. After changing the algorithm, run the restart script:
 ```bash
-./local/restart-ratelimiter-deployment.sh
+./restart-ratelimiter-deployment.sh
 ```
 
 4. Port forward the service:
