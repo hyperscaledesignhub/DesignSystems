@@ -148,7 +148,9 @@ python -m unittest discover -s distributed_ratelimit/tests
 
 2. Create a local Kubernetes cluster using kind:
 ```bash
-./local/deploy-local.sh
+cd local
+./deploy-local.sh
+cd ..
 ```
 
 3. Configure the rate limiter algorithm in `deployment-local.yaml`:
