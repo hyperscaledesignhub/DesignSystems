@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed KV Database - Live System Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem 2rem;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            height: 80px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 400px;
+            grid-auto-rows: minmax(300px, auto);
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 2000px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+        
+        .panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            min-height: 400px;
+        }
+        
+        .panel:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+        }
+        
+        .panel h2 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .cluster-topology {
+            grid-column: span 2;
+        }
+        
+        .topology-container {
+            position: relative;
+            height: 350px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .node {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid;
+        }
+        
+        .node.healthy {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-color: #34d399;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+        
+        .node.degraded {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border-color: #fbbf24;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+        }
+        
+        .node.failed {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            border-color: #f87171;
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+        }
+        
+        .node:hover {
+            transform: scale(1.1);
+        }
+        
+        .connection {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, #60a5fa, #3b82f6);
+            transform-origin: left center;
+            animation: dataFlow 2s linear infinite;
+        }
+        
+        @keyframes dataFlow {
+            0% { box-shadow: 0 0 5px #60a5fa; }
+            50% { box-shadow: 0 0 15px #3b82f6; }
+            100% { box-shadow: 0 0 5px #60a5fa; }
+        }
+        
+        .operations-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 500px;
+            height: 500px;
+            overflow: visible;
+            padding: 1rem;
+            min-width: 400px;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .input-group:first-child {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+        }
+        
+        .input-group input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            font-size: 0.9rem;
+            min-width: 0;
+        }
+        
+        .input-group input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+        
+        .input-group:first-child .btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 2rem;
+        }
+        
+        .result-display {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            max-height: 300px;
+            min-height: 200px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .metric-card {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .hash-ring-viz {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 1rem auto;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+        
+        .ring-node {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            border: 2px solid #60a5fa;
+            transform: translate(-50%, -50%);
+        }
+        
+        .failure-controls {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .operations-log-panel {
+            grid-column: span 2;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .operations-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        
+        .auto-scroll-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .operations-log {
+            max-height: 250px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 0.5rem;
+        }
+        
+        .operation-entry {
+            display: grid;
+            grid-template-columns: auto auto 1fr;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            margin-bottom: 0.25rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            align-items: center;
+            border-left: 3px solid;
+        }
+        
+        .operation-time {
+            font-weight: bold;
+            color: #60a5fa;
+            min-width: 80px;
+        }
+        
+        .operation-type {
+            font-size: 1rem;
+            text-align: center;
+            min-width: 30px;
+        }
+        
+        .operation-details {
+            word-break: break-word;
+        }
+        
+        .operation-put {
+            background: rgba(16, 185, 129, 0.2);
+            border-left-color: #10b981;
+        }
+        
+        .operation-get {
+            background: rgba(59, 130, 246, 0.2);
+            border-left-color: #3b82f6;
+        }
+        
+        .operation-error {
+            background: rgba(220, 38, 38, 0.2);
+            border-left-color: #dc2626;
+        }
+        
+        .operation-info {
+            background: rgba(59, 130, 246, 0.2);
+            border-left-color: #3b82f6;
+        }
+        
+        .operation-warning {
+            background: rgba(245, 158, 11, 0.2);
+            border-left-color: #f59e0b;
+        }
+        
+        .operation-success {
+            background: rgba(16, 185, 129, 0.2);
+            border-left-color: #10b981;
+        }
+        
+        .log-panel {
+            grid-column: span 2;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            padding: 0.5rem;
+            margin-bottom: 0.25rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+        
+        .log-info {
+            background: rgba(59, 130, 246, 0.2);
+            border-left: 3px solid #3b82f6;
+        }
+        
+        .log-warning {
+            background: rgba(245, 158, 11, 0.2);
+            border-left: 3px solid #f59e0b;
+        }
+        
+        .log-error {
+            background: rgba(220, 38, 38, 0.2);
+            border-left: 3px solid #dc2626;
+        }
+        
+        .connection-line {
+            stroke: #60a5fa;
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+            animation: dash 2s linear infinite;
+        }
+        
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -10;
+            }
+        }
+        
+        .config-panel {
+            background: rgba(0,0,0,0.9);
+            padding: 1rem;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            min-width: 280px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .config-input {
+            display: block;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        
+        .config-input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .config-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .config-buttons .btn {
+            flex: 1;
+            padding: 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-height: 40px;
+        }
+        
+        .config-panel h3 {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: #fff;
+        }
+        
+        .config-panel {
+            animation: slideInRight 0.5s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <div class="status-indicator"></div>
+            Distributed Key-Value Database - Live System Dashboard
+        </h1>
+    </div>
+    
+    <div class="dashboard">
+        <!-- Cluster Topology -->
+        <div class="panel cluster-topology">
+            <h2>🌐 Cluster Topology & Data Flow</h2>
+            <div class="topology-container" id="topologyContainer">
+                <svg id="connectionSvg" style="position: absolute; width: 100%; height: 100%; pointer-events: none;">
+                </svg>
+            </div>
+        </div>
+        
+        <!-- Real-time Operations -->
+        <div class="panel operations-panel">
+            <h2>⚡ Live Operations</h2>
+            <div style="margin-bottom: 1rem; padding: 0.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 4px; border-left: 3px solid #10b981;">
+                <strong>PUT Operations:</strong> Enter key and value, then click PUT
+            </div>
+            <div class="input-group">
+                <input type="text" id="keyInput" placeholder="Enter key">
+                <input type="text" id="valueInput" placeholder="Enter value">
+                <button class="btn btn-primary" onclick="performPut()">PUT</button>
+            </div>
+            <div class="input-group">
+                <input type="text" id="getKeyInput" placeholder="Key to get">
+                <button class="btn btn-primary" onclick="performGet()">GET</button>
+                <button class="btn btn-warning" onclick="showHashRing()">Show Ring</button>
+            </div>
+            <div class="result-display" id="operationResult">
+                Ready for operations...
+            </div>
+        </div>
+        
+
+        
+        <!-- System Metrics -->
+        <div class="panel">
+            <h2>📊 Real-time Metrics</h2>
+            <div class="metrics-grid" id="metricsGrid">
+                <div class="metric-card">
+                    <div class="metric-value" id="totalNodes">0</div>
+                    <div class="metric-label">Active Nodes</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="healthyNodes">0</div>
+                    <div class="metric-label">Healthy Nodes</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="totalOperations">0</div>
+                    <div class="metric-label">Operations</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="replicationFactor">3</div>
+                    <div class="metric-label">Replication Factor</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Node Configuration Panel -->
+        <div class="panel config-panel">
+            <h2>🔧 Node Configuration</h2>
+            <input type="text" class="config-input" id="nodeUrls" placeholder="localhost:9999,localhost:10000,localhost:10001" value="">
+            <div class="config-buttons">
+                <button class="btn btn-primary" onclick="updateConfiguration()">🔄 Update</button>
+                <button class="btn btn-warning" onclick="autoDiscover()">🔍 Auto Discover</button>
+            </div>
+            <div style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.8;">
+                <strong>Quick Start:</strong><br>
+                1. Start your nodes on ports 9999,10000,10001<br>
+                2. Click "Auto Discover" or enter URLs manually<br>
+                3. Watch the dashboard come alive!<br><br>
+                <strong>Current:</strong> <span id="currentConfig">None - Click Auto Discover!</span>
+            </div>
+        </div>
+        
+        <!-- Hash Ring Visualization -->
+        <div class="panel">
+            <h2>🔄 Consistent Hash Ring</h2>
+            <div class="hash-ring-viz" id="hashRingViz">
+            </div>
+            <div id="ringInfo" style="font-size: 0.8rem; text-align: center; margin-top: 1rem;">
+                Ring Status: Initializing...
+            </div>
+        </div>
+        
+        <!-- Failure Simulation -->
+        <div class="panel">
+            <h2>💥 Chaos Engineering</h2>
+            <div class="failure-controls">
+                <button class="btn btn-danger" onclick="simulateNodeFailure()">Simulate Node Failure</button>
+                <button class="btn btn-warning" onclick="simulateNetworkPartition()">Network Partition</button>
+                <button class="btn btn-primary" onclick="recoverAllNodes()">Recover All</button>
+            </div>
+            <div style="margin-top: 1rem;">
+                <button class="btn btn-primary" onclick="demonstrateConsistency()">Demo Consistency</button>
+                <button class="btn btn-primary" onclick="loadTest()">Load Test</button>
+            </div>
+        </div>
+        
+        <!-- Operations Log -->
+        <div class="panel operations-log-panel">
+            <h2>📝 Live KV Operations Log</h2>
+            <div class="operations-controls">
+                <button class="btn btn-primary" onclick="clearOperationsLog()">Clear Log</button>
+                <button class="btn btn-warning" onclick="exportOperationsLog()">Export Log</button>
+                <label class="auto-scroll-toggle">
+                    <input type="checkbox" id="autoScroll" checked> Auto-scroll
+                </label>
+            </div>
+            <div id="operationsLog" class="operations-log">
+                <div class="operation-entry operation-info">
+                    <div class="operation-time">[System Ready]</div>
+                    <div class="operation-type">📊</div>
+                    <div class="operation-details">KV Operations log initialized - watching for PUT/GET operations...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Logs -->
+        <div class="panel log-panel">
+            <h2>📝 System Activity Log</h2>
+            <div id="systemLogs">
+                <div class="log-entry log-info">
+                    <strong>[WELCOME]</strong> 🚀 Distributed KV Database Dashboard initialized!
+                </div>
+                <div class="log-entry log-warning">
+                    <strong>[SETUP]</strong> 👆 Use the configuration panel (right column) to connect to your nodes
+                </div>
+                <div class="log-entry log-info">
+                    <strong>[TIP]</strong> 💡 Click "Auto Discover" to automatically find running nodes
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class DistributedKVDashboard {
+            constructor() {
+                this.nodes = [];
+                this.nodeUrls = [];
+                this.operationCount = 0;
+                this.updateInterval = 2000; // 2 seconds
+                this.connectionAttempts = 0;
+                this.maxConnectionAttempts = 3;
+                this.operationsLog = [];
+                this.maxOperationsLog = 100;
+                this.init();
+            }
+            
+            init() {
+                this.log('Dashboard starting...', 'info');
+                
+                // Initialize the current config display
+                document.getElementById('currentConfig').textContent = 'None - Click Auto Discover!';
+                
+                // Try to load from localStorage first
+                const savedUrls = localStorage.getItem('distributedKV_nodeUrls');
+                if (savedUrls && savedUrls.trim()) {
+                    this.log(`Found saved configuration: ${savedUrls}`, 'info');
+                    document.getElementById('nodeUrls').value = savedUrls;
+                    document.getElementById('currentConfig').textContent = savedUrls;
+                    this.updateConfiguration();
+                } else {
+                    this.log('No saved configuration found. Trying auto-discovery...', 'info');
+                    // Set a default configuration while auto-discovery runs
+                    this.setDefaultConfiguration();
+                    this.tryAutoDiscover();
+                }
+                this.startPeriodicUpdates();
+            }
+            
+            setDefaultConfiguration() {
+                // Set common default ports as fallback
+                const defaultUrls = 'localhost:9999,localhost:10000,localhost:10001';
+                document.getElementById('nodeUrls').value = defaultUrls;
+                document.getElementById('currentConfig').textContent = 'Default (not verified)';
+                this.log(`📝 Using default configuration: ${defaultUrls}`, 'info');
+                this.log('🔍 Click "Auto Discover" to verify or find active nodes', 'warning');
+                this.nodeUrls = defaultUrls.split(',').map(url => url.trim());
+            }
+            
+            updateConfiguration() {
+                const input = document.getElementById('nodeUrls').value.trim();
+                
+                if (!input) {
+                    this.log('Please enter node URLs or use Auto Discover', 'warning');
+                    return;
+                }
+                
+                // Validate and clean URLs
+                const urls = input.split(',').map(url => {
+                    url = url.trim();
+                    // Add http:// if not present for validation
+                    const testUrl = url.startsWith('http') ? url : `http://${url}`;
+                    try {
+                        const parsed = new URL(testUrl);
+                        return `${parsed.hostname}:${parsed.port || '80'}`;
+                    } catch (e) {
+                        this.log(`Invalid URL format: ${url}`, 'error');
+                        return null;
+                    }
+                }).filter(url => url !== null);
+                
+                if (urls.length === 0) {
+                    this.log('No valid URLs provided', 'error');
+                    return;
+                }
+                
+                this.nodeUrls = urls;
+                
+                // Save configuration
+                localStorage.setItem('distributedKV_nodeUrls', urls.join(','));
+                
+                // Update display
+                document.getElementById('currentConfig').textContent = urls.join(', ');
+                
+                this.log(`Configuration updated: ${this.nodeUrls.length} nodes configured`, 'info');
+                this.log(`Node URLs: ${this.nodeUrls.join(', ')}`, 'info');
+                this.connectionAttempts = 0;
+                this.refreshClusterState();
+            }
+            
+            async tryAutoDiscover() {
+                this.log('Attempting auto-discovery...', 'info');
+                
+                // Common port ranges for development
+                const commonPortSets = [
+                    // User's requested ports (try first)
+                    [9999, 10000, 10001],
+                    // Original ports
+                    [8080, 8081, 8082],
+                    // Other common development ports
+                    [3000, 3001, 3002],
+                    [4000, 4001, 4002],
+                    [5000, 5001, 5002]
+                ];
+                
+                for (const portSet of commonPortSets) {
+                    this.log(`Checking ports: ${portSet.join(', ')}`, 'info');
+                    const discoveredUrls = [];
+                    
+                    for (const port of portSet) {
+                        const url = `localhost:${port}`;
+                        try {
+                            // Create a promise with manual timeout
+                            const healthCheck = this.fetchWithTimeout(`http://${url}/health`, 2000);
+                            const response = await healthCheck;
+                            
+                            if (response && response.ok) {
+                                discoveredUrls.push(url);
+                                this.log(`✓ Discovered active node at ${url}`, 'info');
+                            }
+                        } catch (error) {
+                            // Node not available at this port - continue silently
+                            this.log(`✗ No node found at ${url}`, 'info');
+                        }
+                    }
+                    
+                    if (discoveredUrls.length > 0) {
+                        const urlString = discoveredUrls.join(',');
+                        document.getElementById('nodeUrls').value = urlString;
+                        document.getElementById('currentConfig').textContent = urlString;
+                        this.nodeUrls = discoveredUrls;
+                        
+                        // Save the discovered configuration
+                        localStorage.setItem('distributedKV_nodeUrls', urlString);
+                        
+                        this.log(`🎉 Auto-discovery successful: Found ${discoveredUrls.length} nodes`, 'info');
+                        this.log(`Active nodes: ${urlString}`, 'info');
+                        
+                        // Immediately refresh to show the discovered nodes
+                        this.refreshClusterState();
+                        return;
+                    }
+                }
+                
+                this.log('⚠ Auto-discovery failed to find any active nodes', 'warning');
+                this.log('Please manually configure node URLs in the top-right panel', 'warning');
+                this.log('Make sure your nodes are running and accessible', 'warning');
+            }
+            
+            // Helper function to implement fetch with timeout
+            fetchWithTimeout(url, timeout = 2000) {
+                return new Promise((resolve, reject) => {
+                    const timer = setTimeout(() => {
+                        reject(new Error('Request timeout'));
+                    }, timeout);
+                    
+                    fetch(url)
+                        .then(response => {
+                            clearTimeout(timer);
+                            resolve(response);
+                        })
+                        .catch(error => {
+                            clearTimeout(timer);
+                            reject(error);
+                        });
+                });
+            }
+            
+            async autoDiscover() {
+                this.log('Manual auto-discovery triggered...', 'info');
+                await this.tryAutoDiscover();
+            }
+            
+            async refreshClusterState() {
+                if (!this.nodeUrls || this.nodeUrls.length === 0) {
+                    this.log('⚠ No nodes configured. Please use the configuration panel.', 'warning');
+                    // Show empty topology
+                    this.nodes = [];
+                    this.updateTopology();
+                    this.updateMetrics();
+                    return;
+                }
+                
+                this.nodes = [];
+                let successfulConnections = 0;
+                
+                this.log(`🔍 Checking ${this.nodeUrls.length} configured nodes...`, 'info');
+                
+                for (let i = 0; i < this.nodeUrls.length; i++) {
+                    const url = this.nodeUrls[i];
+                    const nodeId = `node-${i+1}`;
+                    
+                    try {
+                        // Use our custom timeout function instead of AbortSignal
+                        const [healthResponse, infoResponse, peersResponse] = await Promise.all([
+                            this.fetchWithTimeout(`http://${url}/health`, 3000).catch(() => null),
+                            this.fetchWithTimeout(`http://${url}/info`, 3000).catch(() => null),
+                            this.fetchWithTimeout(`http://${url}/peers`, 3000).catch(() => null)
+                        ]);
+                        
+                        const health = healthResponse && healthResponse.ok ? 
+                            await healthResponse.json().catch(() => null) : null;
+                        const info = infoResponse && infoResponse.ok ? 
+                            await infoResponse.json().catch(() => null) : null;
+                        const peers = peersResponse && peersResponse.ok ? 
+                            await peersResponse.json().catch(() => []) : [];
+                        
+                        let status = 'failed';
+                        if (health) {
+                            status = health.status === 'healthy' ? 'healthy' : 'degraded';
+                            successfulConnections++;
+                        }
+                        
+                        this.nodes.push({
+                            id: nodeId,
+                            url: url,
+                            status: status,
+                            info: info,
+                            peers: Array.isArray(peers) ? peers : [],
+                            position: this.calculateNodePosition(i, this.nodeUrls.length),
+                            lastSeen: status !== 'failed' ? new Date().toISOString() : null
+                        });
+                        
+                        if (status !== 'failed') {
+                            this.log(`✅ ${nodeId} (${url}) - Status: ${status}`, 'info');
+                        } else {
+                            this.log(`❌ ${nodeId} (${url}) - Not responding`, 'error');
+                        }
+                        
+                    } catch (error) {
+                        this.nodes.push({
+                            id: nodeId,
+                            url: url,
+                            status: 'failed',
+                            info: null,
+                            peers: [],
+                            position: this.calculateNodePosition(i, this.nodeUrls.length),
+                            lastSeen: null,
+                            error: error.message
+                        });
+                        
+                        this.log(`❌ ${nodeId} (${url}) - Error: ${error.message}`, 'error');
+                    }
+                }
+                
+                // Connection summary
+                if (successfulConnections === 0) {
+                    this.connectionAttempts++;
+                    this.log(`⚠ No nodes accessible (attempt ${this.connectionAttempts}/${this.maxConnectionAttempts})`, 'error');
+                    
+                    if (this.connectionAttempts >= this.maxConnectionAttempts) {
+                        this.log('💡 Troubleshooting tips:', 'warning');
+                        this.log('1. Check if your nodes are running', 'warning');
+                        this.log('2. Verify the ports are correct', 'warning');
+                        this.log('3. Try the Auto Discover button', 'warning');
+                        this.log('4. Check browser console for CORS errors', 'warning');
+                    }
+                } else {
+                    this.connectionAttempts = 0;
+                    this.log(`🎯 Cluster status: ${successfulConnections}/${this.nodeUrls.length} nodes accessible`, 'info');
+                }
+                
+                this.updateTopology();
+                this.updateMetrics();
+                this.updateHashRing();
+            }
+            
+            calculateNodePosition(index, total) {
+                const angle = (index * 2 * Math.PI) / total;
+                const radius = 80; // Reduced radius to fit better
+                const centerX = 200; // Centered in container
+                const centerY = 150; // Centered in container
+                
+                return {
+                    x: centerX + radius * Math.cos(angle - Math.PI/2),
+                    y: centerY + radius * Math.sin(angle - Math.PI/2)
+                };
+            }
+            
+            updateTopology() {
+                const container = document.getElementById('topologyContainer');
+                const svg = document.getElementById('connectionSvg');
+                
+                // Clear existing nodes
+                const existingNodes = container.querySelectorAll('.node');
+                existingNodes.forEach(node => node.remove());
+                
+                // Clear existing connections
+                svg.innerHTML = '';
+                
+                // Add nodes
+                this.nodes.forEach(node => {
+                    const nodeEl = document.createElement('div');
+                    nodeEl.className = `node ${node.status}`;
+                    // Offset by half node size (40px) to center the node at the calculated position
+                    nodeEl.style.left = `${node.position.x - 40}px`;
+                    nodeEl.style.top = `${node.position.y - 40}px`;
+                    nodeEl.innerHTML = `
+                        <div>${node.id}</div>
+                        <div style="font-size: 0.6rem;">${node.url}</div>
+                    `;
+                    nodeEl.onclick = () => this.showNodeDetails(node);
+                    container.appendChild(nodeEl);
+                });
+                
+                // Add connections between healthy nodes
+                this.drawConnections();
+            }
+            
+            drawConnections() {
+                const svg = document.getElementById('connectionSvg');
+                const healthyNodes = this.nodes.filter(n => n.status === 'healthy' || n.status === 'degraded');
+                
+                for (let i = 0; i < healthyNodes.length; i++) {
+                    for (let j = i + 1; j < healthyNodes.length; j++) {
+                        const node1 = healthyNodes[i];
+                        const node2 = healthyNodes[j];
+                        
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        // Connect to center of nodes (position is already center, no offset needed)
+                        line.setAttribute('x1', node1.position.x);
+                        line.setAttribute('y1', node1.position.y);
+                        line.setAttribute('x2', node2.position.x);
+                        line.setAttribute('y2', node2.position.y);
+                        line.setAttribute('class', 'connection-line');
+                        svg.appendChild(line);
+                    }
+                }
+            }
+            
+            updateMetrics() {
+                const totalNodes = this.nodes.length;
+                const healthyNodes = this.nodes.filter(n => n.status === 'healthy').length;
+                
+                document.getElementById('totalNodes').textContent = totalNodes;
+                document.getElementById('healthyNodes').textContent = healthyNodes;
+                document.getElementById('totalOperations').textContent = this.operationCount;
+                
+                // Update replication factor from first healthy node
+                const healthyNode = this.nodes.find(n => n.status === 'healthy');
+                if (healthyNode && healthyNode.info) {
+                    document.getElementById('replicationFactor').textContent = 
+                        healthyNode.info.replication_factor || 3;
+                }
+            }
+            
+            async updateHashRing() {
+                const healthyNode = this.nodes.find(n => n.status === 'healthy');
+                if (!healthyNode) return;
+                
+                try {
+                    const response = await fetch(`http://${healthyNode.url}/ring`);
+                    const ringData = await response.json();
+                    
+                    const ringViz = document.getElementById('hashRingViz');
+                    ringViz.innerHTML = ''; // Clear existing
+                    
+                    if (ringData.nodes) {
+                        ringData.nodes.forEach((node, index) => {
+                            const angle = (index * 2 * Math.PI) / ringData.nodes.length;
+                            const radius = 90;
+                            const x = 100 + radius * Math.cos(angle - Math.PI/2);
+                            const y = 100 + radius * Math.sin(angle - Math.PI/2);
+                            
+                            const nodeEl = document.createElement('div');
+                            nodeEl.className = 'ring-node';
+                            nodeEl.style.left = `${x}px`;
+                            nodeEl.style.top = `${y}px`;
+                            nodeEl.title = node;
+                            ringViz.appendChild(nodeEl);
+                        });
+                    }
+                    
+                    document.getElementById('ringInfo').textContent = 
+                        `Ring Status: ${ringData.node_count} nodes in ring`;
+                        
+                } catch (error) {
+                    document.getElementById('ringInfo').textContent = 'Ring Status: Error loading';
+                }
+            }
+            
+            async performPut() {
+                const key = document.getElementById('keyInput').value;
+                const value = document.getElementById('valueInput').value;
+                
+                if (!key || !value) {
+                    this.log('Please enter both key and value', 'warning');
+                    return;
+                }
+                
+                const healthyNode = this.nodes.find(n => n.status === 'healthy');
+                if (!healthyNode) {
+                    this.log('No healthy nodes available', 'error');
+                    return;
+                }
+                
+                try {
+                    this.logOperation('put', `PUT operation initiated: ${key}=${value}`, 'put');
+                    this.log(`PUT operation: ${key}=${value}`, 'info');
+                    
+                    const response = await fetch(`http://${healthyNode.url}/kv/${key}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({value: value})
+                    });
+                    
+                    const result = await response.json();
+                    this.operationCount++;
+                    
+                    document.getElementById('operationResult').innerHTML = 
+                        `<strong>PUT Result:</strong><br>${JSON.stringify(result, null, 2)}`;
+                    
+                    if (result.error) {
+                        this.logOperation('error', `PUT failed: ${result.error}`, 'error');
+                        this.log(`PUT failed: ${result.error}`, 'error');
+                    } else {
+                        const replicaInfo = result.successful_writes ? 
+                            `${result.successful_writes}/${result.total_replicas} replicas` : 
+                            '1 replica';
+                        this.logOperation('success', `PUT successful: ${key}=${value} (${replicaInfo})`, 'success');
+                        this.log(`PUT successful: ${replicaInfo}`, 'info');
+                    }
+                    
+                    // Clear inputs
+                    document.getElementById('keyInput').value = '';
+                    document.getElementById('valueInput').value = '';
+                    
+                } catch (error) {
+                    this.logOperation('error', `PUT error: ${error.message}`, 'error');
+                    this.log(`PUT error: ${error.message}`, 'error');
+                }
+            }
+            
+            async performGet() {
+                const key = document.getElementById('getKeyInput').value;
+                
+                if (!key) {
+                    this.log('Please enter a key to get', 'warning');
+                    return;
+                }
+                
+                const healthyNode = this.nodes.find(n => n.status === 'healthy');
+                if (!healthyNode) {
+                    this.log('No healthy nodes available', 'error');
+                    return;
+                }
+                
+                try {
+                    this.logOperation('get', `GET operation initiated: ${key}`, 'get');
+                    this.log(`GET operation: ${key}`, 'info');
+                    
+                    const response = await fetch(`http://${healthyNode.url}/kv/${key}`);
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        this.operationCount++;
+                        
+                        document.getElementById('operationResult').innerHTML = 
+                            `<strong>GET Result:</strong><br>${JSON.stringify(result, null, 2)}`;
+                        
+                        if (result.error) {
+                            this.logOperation('error', `GET failed: ${result.error}`, 'error');
+                            this.log(`GET failed: ${result.error}`, 'error');
+                        } else {
+                            this.logOperation('success', `GET successful: ${key}=${result.value}`, 'success');
+                            this.log(`GET successful: ${result.value}`, 'info');
+                        }
+                    } else {
+                        this.logOperation('warning', `GET failed: Key "${key}" not found`, 'warning');
+                        this.log(`GET failed: Key not found`, 'warning');
+                        document.getElementById('operationResult').innerHTML = 
+                            `<strong>GET Result:</strong><br>Key "${key}" not found`;
+                    }
+                    
+                    // Clear input
+                    document.getElementById('getKeyInput').value = '';
+                    
+                } catch (error) {
+                    this.logOperation('error', `GET error: ${error.message}`, 'error');
+                    this.log(`GET error: ${error.message}`, 'error');
+                }
+            }
+            
+            async showHashRing() {
+                const healthyNode = this.nodes.find(n => n.status === 'healthy');
+                if (!healthyNode) {
+                    this.log('No healthy nodes available', 'error');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`http://${healthyNode.url}/ring`);
+                    const result = await response.json();
+                    
+                    document.getElementById('operationResult').innerHTML = 
+                        `<strong>Hash Ring Info:</strong><br>${JSON.stringify(result, null, 2)}`;
+                    
+                    this.log('Hash ring information displayed', 'info');
+                    
+                } catch (error) {
+                    this.log(`Ring info error: ${error.message}`, 'error');
+                }
+            }
+            
+            showNodeDetails(node) {
+                const details = `
+                    <strong>Node Details:</strong><br>
+                    ID: ${node.id}<br>
+                    URL: ${node.url}<br>
+                    Status: ${node.status}<br>
+                    ${node.lastSeen ? `Last Seen: ${new Date(node.lastSeen).toLocaleTimeString()}` : ''}<br>
+                    ${node.error ? `Error: ${node.error}<br>` : ''}
+                    Peers: ${node.peers.length}<br>
+                    ${node.info ? `
+                        Running: ${node.info.is_running}<br>
+                        Replication Factor: ${node.info.replication_factor || 'N/A'}<br>
+                        Hash Ring: ${node.info.hash_ring_initialized ? 'Initialized' : 'Not initialized'}
+                    ` : 'No additional info available'}
+                `;
+                document.getElementById('operationResult').innerHTML = details;
+                this.log(`Showing details for ${node.id}`, 'info');
+            }
+            
+            async demonstrateConsistency() {
+                this.log('Starting consistency demonstration...', 'info');
+                
+                // Write to multiple keys and show replication
+                for (let i = 0; i < 3; i++) {
+                    const key = `demo_key_${i}`;
+                    const value = `demo_value_${Date.now()}_${i}`;
+                    
+                    await this.performPutInternal(key, value);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                
+                this.log('Consistency demo complete - check replication across nodes', 'info');
+            }
+            
+            async performPutInternal(key, value) {
+                const healthyNode = this.nodes.find(n => n.status === 'healthy');
+                if (!healthyNode) return;
+                
+                try {
+                    const response = await fetch(`http://${healthyNode.url}/kv/${key}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({value: value})
+                    });
+                    
+                    const result = await response.json();
+                    this.operationCount++;
+                    this.log(`Internal PUT: ${key}=${value} (${result.successful_writes || 0} replicas)`, 'info');
+                    
+                } catch (error) {
+                    this.log(`Internal PUT error: ${error.message}`, 'error');
+                }
+            }
+            
+            async loadTest() {
+                this.log('Starting load test - 10 concurrent operations...', 'info');
+                
+                const promises = [];
+                for (let i = 0; i < 10; i++) {
+                    promises.push(this.performPutInternal(`load_test_${i}`, `value_${Date.now()}_${i}`));
+                }
+                
+                await Promise.all(promises);
+                this.log('Load test complete', 'info');
+            }
+            
+            simulateNodeFailure() {
+                // For demo purposes, mark a random healthy node as failed
+                const healthyNodes = this.nodes.filter(n => n.status === 'healthy');
+                if (healthyNodes.length === 0) {
+                    this.log('No healthy nodes available to simulate failure', 'warning');
+                    return;
+                }
+                
+                const randomNode = healthyNodes[Math.floor(Math.random() * healthyNodes.length)];
+                randomNode.status = 'failed';
+                randomNode.error = 'Simulated failure';
+                randomNode.lastSeen = new Date().toISOString();
+                
+                this.updateTopology();
+                this.updateMetrics();
+                this.log(`Simulated failure of ${randomNode.id} (${randomNode.url})`, 'warning');
+                
+                // Show the failed node details
+                this.showNodeDetails(randomNode);
+            }
+            
+            simulateNetworkPartition() {
+                // Simulate network partition by marking half nodes as degraded
+                const halfPoint = Math.floor(this.nodes.length / 2);
+                let affectedNodes = 0;
+                
+                this.nodes.slice(halfPoint).forEach(node => {
+                    if (node.status === 'healthy') {
+                        node.status = 'degraded';
+                        node.error = 'Network partition';
+                        affectedNodes++;
+                    }
+                });
+                
+                this.updateTopology();
+                this.updateMetrics();
+                this.log(`Simulated network partition affecting ${affectedNodes} nodes`, 'warning');
+            }
+            
+            recoverAllNodes() {
+                this.log('Recovering all nodes...', 'info');
+                
+                // Reset all nodes to healthy status
+                this.nodes.forEach(node => {
+                    node.status = 'healthy';
+                    node.error = null;
+                });
+                
+                this.updateTopology();
+                this.updateMetrics();
+                this.log('All nodes recovered to healthy status', 'info');
+                
+                // Refresh cluster state to get real data
+                this.refreshClusterState();
+            }
+            
+            startPeriodicUpdates() {
+                setInterval(() => {
+                    this.refreshClusterState();
+                }, this.updateInterval);
+            }
+            
+            log(message, type = 'info') {
+                const logContainer = document.getElementById('systemLogs');
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                entry.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+                
+                logContainer.insertBefore(entry, logContainer.firstChild);
+                
+                // Keep only last 50 entries
+                while (logContainer.children.length > 50) {
+                    logContainer.removeChild(logContainer.lastChild);
+                }
+            }
+            
+            logOperation(type, details, operationType = 'info') {
+                // Log all operation-related messages, but exclude pure system status messages
+                const detailsLower = details.toLowerCase();
+                
+                // Only exclude pure system status messages (not operation results)
+                const isPureSystemMessage = (
+                    // Pure node status updates (not operation failures)
+                    (detailsLower.includes('node') && detailsLower.includes('status') && !detailsLower.includes('operation')) ||
+                    // Health check messages
+                    (detailsLower.includes('health check')) ||
+                    (detailsLower.includes('peer discovery')) ||
+                    (detailsLower.includes('gossip')) ||
+                    // Cluster status messages (not operation status)
+                    (detailsLower.includes('cluster status') && !detailsLower.includes('operation'))
+                );
+                
+                if (isPureSystemMessage) {
+                    return; // Skip pure system messages
+                }
+                
+                const timestamp = new Date().toLocaleTimeString();
+                const operation = {
+                    timestamp,
+                    type: operationType,
+                    details,
+                    id: Date.now() + Math.random()
+                };
+                
+                this.operationsLog.unshift(operation);
+                
+                // Keep only last maxOperationsLog entries
+                if (this.operationsLog.length > this.maxOperationsLog) {
+                    this.operationsLog = this.operationsLog.slice(0, this.maxOperationsLog);
+                }
+                
+                this.updateOperationsLog();
+            }
+            
+            updateOperationsLog() {
+                const logContainer = document.getElementById('operationsLog');
+                if (!logContainer) return;
+                
+                logContainer.innerHTML = '';
+                
+                this.operationsLog.forEach(operation => {
+                    const entry = document.createElement('div');
+                    entry.className = `operation-entry operation-${operation.type}`;
+                    entry.innerHTML = `
+                        <div class="operation-time">${operation.timestamp}</div>
+                        <div class="operation-type">${this.getOperationIcon(operation.type)}</div>
+                        <div class="operation-details">${operation.details}</div>
+                    `;
+                    logContainer.appendChild(entry);
+                });
+                
+                // Auto-scroll if enabled
+                if (document.getElementById('autoScroll')?.checked) {
+                    logContainer.scrollTop = 0;
+                }
+            }
+            
+            getOperationIcon(type) {
+                const icons = {
+                    'put': '📝',
+                    'get': '📖',
+                    'error': '❌',
+                    'info': '📊',
+                    'warning': '⚠️',
+                    'success': '✅',
+                    'replication': '🔄',
+                    'node': '🖥️',
+                    'network': '🌐'
+                };
+                return icons[type] || '📊';
+            }
+        }
+        
+        // Global functions for button handlers
+        let dashboard;
+        
+        function updateConfiguration() {
+            dashboard.updateConfiguration();
+        }
+        
+        function autoDiscover() {
+            dashboard.autoDiscover();
+        }
+        
+        function performPut() {
+            dashboard.performPut();
+        }
+        
+        function performGet() {
+            dashboard.performGet();
+        }
+        
+        function showHashRing() {
+            dashboard.showHashRing();
+        }
+        
+        function demonstrateConsistency() {
+            dashboard.demonstrateConsistency();
+        }
+        
+        function loadTest() {
+            dashboard.loadTest();
+        }
+        
+        function simulateNodeFailure() {
+            if (dashboard) {
+                dashboard.simulateNodeFailure();
+            } else {
+                console.error('Dashboard not initialized');
+                alert('Dashboard not ready. Please wait for initialization.');
+            }
+        }
+        
+        function simulateNetworkPartition() {
+            if (dashboard) {
+                dashboard.simulateNetworkPartition();
+            } else {
+                console.error('Dashboard not initialized');
+                alert('Dashboard not ready. Please wait for initialization.');
+            }
+        }
+        
+        function recoverAllNodes() {
+            if (dashboard) {
+                dashboard.recoverAllNodes();
+            } else {
+                console.error('Dashboard not initialized');
+                alert('Dashboard not ready. Please wait for initialization.');
+            }
+        }
+        
+        function clearOperationsLog() {
+            if (dashboard) {
+                dashboard.operationsLog = [];
+                dashboard.updateOperationsLog();
+                // Add a system message to the operations log
+                const logContainer = document.getElementById('operationsLog');
+                if (logContainer) {
+                    logContainer.innerHTML = `
+                        <div class="operation-entry operation-info">
+                            <div class="operation-time">[${new Date().toLocaleTimeString()}]</div>
+                            <div class="operation-type">📊</div>
+                            <div class="operation-details">KV Operations log cleared</div>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        function exportOperationsLog() {
+            if (dashboard && dashboard.operationsLog.length > 0) {
+                const logText = dashboard.operationsLog
+                    .map(op => `[${op.timestamp}] ${op.details}`)
+                    .join('\n');
+                
+                const blob = new Blob([logText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `kv-operations-log-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                // Show success message in system logs instead
+                dashboard.log('KV Operations log exported successfully', 'success');
+            }
+        }
+        
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            dashboard = new DistributedKVDashboard();
+        });
+    </script>
+</body>
+</html>
