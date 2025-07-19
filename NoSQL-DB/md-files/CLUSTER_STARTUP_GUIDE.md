@@ -2,7 +2,7 @@
 
 This directory contains two different ways to start the distributed database cluster:
 
-## 1. Local Development (start-cluster.sh)
+## 1. Local Development (start-cluster-local.sh)
 
 **Use this for:**
 - Local development and testing
@@ -11,7 +11,7 @@ This directory contains two different ways to start the distributed database clu
 
 **How to use:**
 ```bash
-./start-cluster.sh
+./start-cluster-local.sh
 ```
 
 **What it does:**
@@ -55,7 +55,7 @@ This directory contains two different ways to start the distributed database clu
 
 ### For Local Development:
 ```bash
-./start-cluster.sh
+./start-cluster-local.sh
 ```
 
 ### For Kubernetes Testing:
@@ -70,22 +70,16 @@ This directory contains two different ways to start the distributed database clu
 
 ## Troubleshooting
 
-### If start-cluster.sh tries to start locally when you want Kubernetes:
+### If start-cluster-local.sh tries to start locally when you want Kubernetes:
 - Use `start-cluster-k8s.sh` instead
-- The original `start-cluster.sh` is designed for local development only
+- The original `start-cluster-local.sh` is designed for local development only
 
 ### If you get permission errors:
 ```bash
-chmod +x start-cluster.sh start-cluster-k8s.sh
+chmod +x start-cluster-local.sh start-cluster-k8s.sh
 ```
 
 ### If Kubernetes pods aren't starting:
 ```bash
 ./start-cluster-k8s.sh logs
-```
-
-## Additional Scripts
-
-- `build-and-deploy.sh` - Raw Kubernetes deployment script
-- `run-in-pod.sh` - Run scripts inside Kubernetes pods
-- `pod-verify.sh` - Verify cluster functionality from inside a pod 
+``` 
