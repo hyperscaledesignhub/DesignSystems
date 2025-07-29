@@ -1,4 +1,5 @@
-# Database Configuration
+# Node Failure Demo Configuration
+# Optimized for fast recovery and demonstration
 database:
   # Persistent port for the database node
   persistent_port: 55201
@@ -8,36 +9,36 @@ database:
 
 # Node Configuration
 node:
-  node_id: "distributed-database-0"
-  host: "0.0.0.0"
+  node_id: "db-node-1"
+  host: "localhost"
   http_port: 8080
 
 # Cluster Configuration
 cluster:
-  # Seed nodes configuration with ID and port
+  # Seed nodes configuration with ID and port for local development
   seed_nodes:
-    - id: "distributed-database-0"
-      host: "distributed-database-0.db-headless-service.distributed-db.svc.cluster.local"
-      http_port: 8080
-      db_port: 8080
+    - id: "db-node-1"
+      host: "localhost"
+      http_port: 9999
+      db_port: 9999
       persistent_port: 55201
       gossip_port: 25101      # Port for RobustHashingGossipNode
       failure_detection_port: 35101  # Port for failure detection server
       anti_entropy_port: 55301       # http_port + 300 (changed from +200 to avoid conflict)
       monitoring_port: 55401         # http_port + 400
-    - id: "distributed-database-1"
-      host: "distributed-database-1.db-headless-service.distributed-db.svc.cluster.local"
-      http_port: 8080
-      db_port: 8080
+    - id: "db-node-2"
+      host: "localhost"
+      http_port: 10000
+      db_port: 10000
       persistent_port: 55202
       gossip_port: 25102      # Port for RobustHashingGossipNode
       failure_detection_port: 35102  # Port for failure detection server
       anti_entropy_port: 55302       # http_port + 300 (changed from +200 to avoid conflict)
       monitoring_port: 55402         # http_port + 400
-    - id: "distributed-database-2"
-      host: "distributed-database-2.db-headless-service.distributed-db.svc.cluster.local"
-      http_port: 8080
-      db_port: 8080
+    - id: "db-node-3"
+      host: "localhost"
+      http_port: 10001
+      db_port: 10001
       persistent_port: 55203
       gossip_port: 25103      # Port for RobustHashingGossipNode
       failure_detection_port: 35103  # Port for failure detection server
@@ -45,7 +46,7 @@ cluster:
       monitoring_port: 55403         # http_port + 400
   
   replication_factor: 3
-
+  
   # Quorum configuration
   quorum:
     read_quorum: 2
@@ -54,17 +55,17 @@ cluster:
 # Consistency Settings
 consistency:
   default_read: "ONE"
-  default_write: "ALL"
+  default_write: "ONE"
 
-# Timing Configuration
+# Timing Configuration - Optimized for node failure demo
 timing:
   failure_check_interval: 2.0
   failure_threshold: 3
-  anti_entropy_interval: 30.0
+  anti_entropy_interval: 10.0  # Fast recovery for demo
 
 # Data Storage
 storage:
-  data_dir: "/data/{node_id}"  # {node_id} will be replaced with actual node ID
+  data_dir: "./data/{node_id}"  # {node_id} will be replaced with actual node ID
 
 # Logging
 logging:
@@ -73,4 +74,4 @@ logging:
 # Monitoring
 monitoring:
   enabled: true
-  health_check_port: 8081 
+  health_check_port: 8081

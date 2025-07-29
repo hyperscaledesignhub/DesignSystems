@@ -276,10 +276,21 @@ class PersistenceAntiEntropyDemo:
             return
             
         node1_info, node2_info = target_nodes[0], target_nodes[1]
-        node1_id = node1_info['id'] if isinstance(node1_info, dict) else node1_info.node_id
-        node1_address = node1_info['address'] if isinstance(node1_info, dict) else node1_info.get_address()
-        node2_id = node2_info['id'] if isinstance(node2_info, dict) else node2_info.node_id
-        node2_address = node2_info['address'] if isinstance(node2_info, dict) else node2_info.get_address()
+        
+        # Handle both existing nodes (strings) and created nodes (objects)
+        if isinstance(node1_info, str):
+            node1_id = "Node 1"
+            node1_address = node1_info
+        else:
+            node1_id = node1_info['id'] if isinstance(node1_info, dict) else node1_info.node_id
+            node1_address = node1_info['address'] if isinstance(node1_info, dict) else node1_info.get_address()
+            
+        if isinstance(node2_info, str):
+            node2_id = "Node 2"
+            node2_address = node2_info
+        else:
+            node2_id = node2_info['id'] if isinstance(node2_info, dict) else node2_info.node_id
+            node2_address = node2_info['address'] if isinstance(node2_info, dict) else node2_info.get_address()
         
         # Join nodes to form cluster (if not already joined)
         print("🔗 Ensuring cluster connectivity...")
@@ -335,9 +346,13 @@ class PersistenceAntiEntropyDemo:
         
         # Trigger anti-entropy
         print(f"\n🔄 Triggering anti-entropy synchronization...")
-        for node_info in [node1_info, node2_info]:
-            node_id = node_info['id'] if isinstance(node_info, dict) else node_info.node_id
-            address = node_info['address'] if isinstance(node_info, dict) else node_info.get_address()
+        for i, node_info in enumerate([node1_info, node2_info], 1):
+            if isinstance(node_info, str):
+                node_id = f"Node {i}"
+                address = node_info
+            else:
+                node_id = node_info['id'] if isinstance(node_info, dict) else node_info.node_id
+                address = node_info['address'] if isinstance(node_info, dict) else node_info.get_address()
             
             response = requests.post(f"http://{address}/anti-entropy/trigger", timeout=5)
             if response.status_code == 200:

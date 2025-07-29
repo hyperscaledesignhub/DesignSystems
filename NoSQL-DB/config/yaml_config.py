@@ -110,6 +110,22 @@ class YamlConfig:
         """Get monitoring configuration"""
         return self.config.get('monitoring', {})
 
+    def get_quorum_config(self) -> dict:
+        """Get quorum configuration from cluster configuration"""
+        return self.config.get('cluster', {}).get('quorum', {
+            'read_quorum': 2,
+            'write_quorum': 2
+        })
+
+    def update_quorum_config(self, quorum_config: dict) -> None:
+        """Update quorum configuration (for testing purposes)"""
+        if 'cluster' not in self.config:
+            self.config['cluster'] = {}
+        if 'quorum' not in self.config['cluster']:
+            self.config['cluster']['quorum'] = {}
+        
+        self.config['cluster']['quorum'].update(quorum_config)
+
     def get_failure_detection_port_for_node(self, node_id: str) -> Optional[int]:
         node_config = self.get_seed_node_by_id(node_id)
         if node_config:

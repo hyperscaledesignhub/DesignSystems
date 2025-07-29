@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Counters</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .counter-box { 
+            border: 2px solid #ccc; 
+            padding: 20px; 
+            margin: 10px; 
+            display: inline-block; 
+            width: 200px;
+            text-align: center;
+        }
+        .big-number { font-size: 24px; font-weight: bold; color: #e74c3c; }
+    </style>
+    <meta http-equiv="refresh" content="3">
+</head>
+<body>
+    <h1>🚀 Live Distributed Database Counters</h1>
+    <p><strong>Auto-refreshing every 3 seconds...</strong></p>
+    
+    <div class="counter-box">
+        <h3>NODE-1 (localhost:9999)</h3>
+        <div>❤️ Likes: <span class="big-number">{{ node1_likes }}</span></div>
+        <div>🔄 Retweets: <span class="big-number">{{ node1_retweets }}</span></div>
+        <div>💬 Comments: <span class="big-number">{{ node1_comments }}</span></div>
+        <div>👁️ Views: <span class="big-number">{{ node1_views }}</span></div>
+    </div>
+    
+    <div class="counter-box">
+        <h3>NODE-2 (localhost:10000)</h3>
+        <div>❤️ Likes: <span class="big-number">{{ node2_likes }}</span></div>
+        <div>🔄 Retweets: <span class="big-number">{{ node2_retweets }}</span></div>
+        <div>💬 Comments: <span class="big-number">{{ node2_comments }}</span></div>
+        <div>👁️ Views: <span class="big-number">{{ node2_views }}</span></div>
+    </div>
+    
+    <div class="counter-box">
+        <h3>NODE-3 (localhost:10001)</h3>
+        <div>❤️ Likes: <span class="big-number">{{ node3_likes }}</span></div>
+        <div>🔄 Retweets: <span class="big-number">{{ node3_retweets }}</span></div>
+        <div>💬 Comments: <span class="big-number">{{ node3_comments }}</span></div>
+        <div>👁️ Views: <span class="big-number">{{ node3_views }}</span></div>
+    </div>
+    
+    <br><br>
+    <div style="background: #f0f0f0; padding: 15px; border-radius: 5px;">
+        <h3>Summary</h3>
+        <p><strong>Active Tweets:</strong> {{ active_tweets }}</p>
+        <p><strong>Total Counters:</strong> {{ total_counters }}</p>
+        <p><strong>Last Updated:</strong> {{ timestamp }}</p>
+    </div>
+</body>
+</html>

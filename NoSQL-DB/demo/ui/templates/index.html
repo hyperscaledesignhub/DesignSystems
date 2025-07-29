@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Live Distributed Database Traffic{% endblock %}
+
+{% block header_title %}🚀 Live Distributed Database{% endblock %}
+{% block header_subtitle %}Real-time traffic across 3-node cluster{% endblock %}
+
+{% block content %}
+<!-- Live Stats -->
+<div class="card">
+    <h3>🔥 Live Traffic <span id="status" style="color: red;">●</span></h3>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="activeTweets">Loading...</div>
+            <div class="stat-label">Active Tweets</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="totalCounters">Loading...</div>
+            <div class="stat-label">Total Counters</div>
+        </div>
+    </div>
+</div>
+
+<!-- Node Counters -->
+<div class="card">
+    <h3>📊 Counters Per Node</h3>
+    <div id="nodeCounters" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+        <div class="node-box">
+            <h4>NODE-1</h4>
+            <div>❤️ Likes: <span id="node1-likes">0</span></div>
+            <div>🔄 Retweets: <span id="node1-retweets">0</span></div>
+            <div>💬 Comments: <span id="node1-comments">0</span></div>
+            <div>👁️ Views: <span id="node1-views">0</span></div>
+        </div>
+        <div class="node-box">
+            <h4>NODE-2</h4>
+            <div>❤️ Likes: <span id="node2-likes">0</span></div>
+            <div>🔄 Retweets: <span id="node2-retweets">0</span></div>
+            <div>💬 Comments: <span id="node2-comments">0</span></div>
+            <div>👁️ Views: <span id="node2-views">0</span></div>
+        </div>
+        <div class="node-box">
+            <h4>NODE-3</h4>
+            <div>❤️ Likes: <span id="node3-likes">0</span></div>
+            <div>🔄 Retweets: <span id="node3-retweets">0</span></div>
+            <div>💬 Comments: <span id="node3-comments">0</span></div>
+            <div>👁️ Views: <span id="node3-views">0</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Sample Tweet Data -->
+<div class="card">
+    <h3>📝 Sample Tweet Data</h3>
+    <div id="sampleData" style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 14px;">
+        Loading sample tweet data...
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+console.log('Dashboard loading...');
+
+async function loadData() {
+    try {
+        console.log('Fetching data...');
+        
+        // Get active tweets
+        const response = await fetch('/api/real/twitter/active_tweets');
+        const data = await response.json();
+        
+        console.log('Active tweets data:', data);
+        
+        if (data.success) {
+            document.getElementById('activeTweets').textContent = data.total_active || 0;
+            document.getElementById('status').textContent = '● LIVE';
+            
+            if (data.tweets && data.tweets.length > 0) {
+                // Show sample data
+                const sampleTweet = data.tweets[0];
+                document.getElementById('sampleData').innerHTML = 
+                    '<strong>Sample Tweet ID:</strong> ' + sampleTweet.tweet_id + '<br>' +
+                    '<strong>Data:</strong> ' + JSON.stringify(sampleTweet.data, null, 2);
+                
+                // Calculate totals across all tweets
+                let totalCounters = 0;
+                let node1totals = {likes: 0, retweets: 0, comments: 0, views: 0};
+                let node2totals = {likes: 0, retweets: 0, comments: 0, views: 0};
+                let node3totals = {likes: 0, retweets: 0, comments: 0, views: 0};
+                
+                // Process each tweet to get counters from all nodes
+                for (let i = 0; i < Math.min(data.tweets.length, 5); i++) {
+                    const tweet = data.tweets[i];
+                    console.log('Processing tweet:', tweet.tweet_id);
+                    
+                    try {
+                        const statsResponse = await fetch('/api/twitter/stats/' + tweet.tweet_id);
+                        const statsData = await statsResponse.json();
+                        console.log('Stats for', tweet.tweet_id, ':', statsData);
+                        
+                        // Add counters from each node
+                        if (statsData['node-1'] && statsData['node-1'].counters) {
+                            const c = statsData['node-1'].counters;
+                            node1totals.likes += c.likes || 0;
+                            node1totals.retweets += c.retweets || 0;
+                            node1totals.comments += c.comments || 0;
+                            node1totals.views += c.views || 0;
+                        }
+                        
+                        if (statsData['node-2'] && statsData['node-2'].counters) {
+                            const c = statsData['node-2'].counters;
+                            node2totals.likes += c.likes || 0;
+                            node2totals.retweets += c.retweets || 0;
+                            node2totals.comments += c.comments || 0;
+                            node2totals.views += c.views || 0;
+                        }
+                        
+                        if (statsData['node-3'] && statsData['node-3'].counters) {
+                            const c = statsData['node-3'].counters;
+                            node3totals.likes += c.likes || 0;
+                            node3totals.retweets += c.retweets || 0;
+                            node3totals.comments += c.comments || 0;
+                            node3totals.views += c.views || 0;
+                        }
+                        
+                    } catch (e) {
+                        console.error('Error fetching stats for', tweet.tweet_id, ':', e);
+                    }
+                }
+                
+                // Update the UI
+                totalCounters = node1totals.likes + node1totals.retweets + node1totals.comments + node1totals.views +
+                               node2totals.likes + node2totals.retweets + node2totals.comments + node2totals.views +
+                               node3totals.likes + node3totals.retweets + node3totals.comments + node3totals.views;
+                
+                document.getElementById('totalCounters').textContent = totalCounters;
+                
+                // Update node counters
+                document.getElementById('node1-likes').textContent = node1totals.likes;
+                document.getElementById('node1-retweets').textContent = node1totals.retweets;
+                document.getElementById('node1-comments').textContent = node1totals.comments;
+                document.getElementById('node1-views').textContent = node1totals.views;
+                
+                document.getElementById('node2-likes').textContent = node2totals.likes;
+                document.getElementById('node2-retweets').textContent = node2totals.retweets;
+                document.getElementById('node2-comments').textContent = node2totals.comments;
+                document.getElementById('node2-views').textContent = node2totals.views;
+                
+                document.getElementById('node3-likes').textContent = node3totals.likes;
+                document.getElementById('node3-retweets').textContent = node3totals.retweets;
+                document.getElementById('node3-comments').textContent = node3totals.comments;
+                document.getElementById('node3-views').textContent = node3totals.views;
+                
+                console.log('Updated UI with counters:', {node1totals, node2totals, node3totals});
+            }
+        } else {
+            document.getElementById('activeTweets').textContent = 'Error';
+            document.getElementById('status').textContent = '● ERROR';
+        }
+        
+    } catch (error) {
+        console.error('Error loading data:', error);
+        document.getElementById('activeTweets').textContent = 'Error';
+        document.getElementById('status').textContent = '● ERROR';
+        document.getElementById('sampleData').textContent = 'Error: ' + error.message;
+    }
+}
+
+// Load data immediately
+loadData();
+
+// Refresh every 3 seconds
+setInterval(loadData, 3000);
+
+console.log('Dashboard initialized');
+</script>
+
+<style>
+.node-box {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+
+.node-box h4 {
+    margin: 0 0 15px 0;
+    color: #1f2937;
+}
+
+.node-box div {
+    margin: 8px 0;
+    font-size: 16px;
+}
+</style>
+{% endblock %}

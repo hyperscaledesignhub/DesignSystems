@@ -16,7 +16,7 @@ import tempfile
 import shutil
 import hashlib
 from node import RobustSimpleGossipNode, find_free_port
-from hashing_lib import initialize_hash_ring, get_responsible_nodes, get_ring_info
+from lib.hashing_lib import initialize_hash_ring, get_responsible_nodes, get_ring_info
 
 # Global variables for cleanup
 nodes = []

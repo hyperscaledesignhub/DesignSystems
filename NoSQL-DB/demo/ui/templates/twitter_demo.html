@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Twitter Demo - Live Counters{% endblock %}
+{% block demo_type %}twitter{% endblock %}
+
+{% block header_title %}🐦 Twitter-like Social Media Platform{% endblock %}
+{% block header_subtitle %}Real-time distributed counters across 3-node cluster{% endblock %}
+
+{% block content %}
+
+<!-- Live Server Status -->
+<div class="card">
+    <h3>🔥 Automatic Traffic Generator <span style="color: red;">● LIVE</span></h3>
+    {% if reset_message %}
+    <div class="alert alert-{{ reset_class }}" style="margin: 15px 0; padding: 12px; border-radius: 8px; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;">
+        {{ reset_message }}
+    </div>
+    {% endif %}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="activeTweets">{{ active_tweets }}</div>
+            <div class="stat-label">Active Tweets</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="totalCounters">{{ total_counters }}</div>
+            <div class="stat-label">Total Counters</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">3</div>
+            <div class="stat-label">Cluster Nodes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ timestamp }}</div>
+            <div class="stat-label">Last Updated</div>
+        </div>
+    </div>
+</div>
+
+<!-- Node Servers with Live Counters -->
+<div class="card">
+    <h3>📊 Live Counters Across All Servers</h3>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 20px;">
+        
+        <!-- SERVER 1 -->
+        <div class="server-box">
+            <div class="server-header">
+                <div class="server-icon">🖥️</div>
+                <h4>SERVER-1</h4>
+                <div class="server-address">localhost:9999</div>
+            </div>
+            <div class="counters-grid">
+                <div class="counter-item">
+                    <div class="counter-emoji">❤️</div>
+                    <div class="counter-value">{{ node1_likes }}</div>
+                    <div class="counter-label">Likes</div>
+                </div>
+                <div class="counter-item">
+                    <div class="counter-emoji">🔄</div>
+                    <div class="counter-value">{{ node1_retweets }}</div>
+                    <div class="counter-label">Retweets</div>
+                </div>
+                <div class="counter-item">
+                    <div class="counter-emoji">💬</div>
+                    <div class="counter-value">{{ node1_comments }}</div>
+                    <div class="counter-label">Comments</div>
+                </div>
+                <div class="counter-item">
+                    <div class="counter-emoji">👁️</div>
+                    <div class="counter-value">{{ node1_views }}</div>
+                    <div class="counter-label">Views</div>
+                </div>
+            </div>
+            <div class="server-status">✅ Healthy</div>
+        </div>
+
+        <!-- SERVER 2 -->
+        <div class="server-box">
+            <div class="server-header">
+                <div class="server-icon">🖥️</div>
+                <h4>SERVER-2</h4>
+                <div class="server-address">localhost:10000</div>
+            </div>
+            <div class="counters-grid">
+                <div class="counter-item">
+                    <div class="counter-emoji">❤️</div>
+                    <div class="counter-value">{{ node2_likes }}</div>
+                    <div class="counter-label">Likes</div>
+                </div>
+                <div class="counter-item">
+                    <div class="counter-emoji">🔄</div>
+                    <div class="counter-value">{{ node2_retweets }}</div>
+                    <div class="counter-label">Retweets</div>
+                </div>
+                <div class="counter-item">
+                    <div class="counter-emoji">💬</div>
+                    <div class="counter-value">{{ node2_comments }}</div>
+                    <div class="counter-label">Comments</div>
+                </div>
+                <div class="counter-item">
+                    <div class="counter-emoji">👁️</div>
+                    <div class="counter-value">{{ node2_views }}</div>
+                    <div class="counter-label">Views</div>
+                </div>
+            </div>
+            <div class="server-status">✅ Healthy</div>
+        </div>
+
+        <!-- SERVER 3 -->
+        <div class="server-box">
+            <div class="server-header">
+                <div class="server-icon">🖥️</div>
+                <h4>SERVER-3</h4>
+                <div class="server-address">localhost:10001</div>
+            </div>
+            <div class="counters-grid">
+                <div class="counter-item">
+                    <div class="counter-emoji">❤️</div>
+                    <div class="counter-value">{{ node3_likes }}</div>
+                    <div class="counter-label">Likes</div>
+                </div>
+                <div class="counter-item">
+                    <div class="counter-emoji">🔄</div>
+                    <div class="counter-value">{{ node3_retweets }}</div>
+                    <div class="counter-label">Retweets</div>
+                </div>
+                <div class="counter-item">
+                    <div class="counter-emoji">💬</div>
+                    <div class="counter-value">{{ node3_comments }}</div>
+                    <div class="counter-label">Comments</div>
+                </div>
+                <div class="counter-item">
+                    <div class="counter-emoji">👁️</div>
+                    <div class="counter-value">{{ node3_views }}</div>
+                    <div class="counter-label">Views</div>
+                </div>
+            </div>
+            <div class="server-status">✅ Healthy</div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Distribution Info -->
+<div class="card">
+    <h3>🌐 Understanding the Data Distribution</h3>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+        <p><strong>What you're seeing:</strong></p>
+        <ul style="line-height: 1.8;">
+            <li>🔥 <strong>Real automatic traffic</strong> creating tweets and engagement</li>
+            <li>📊 <strong>Actual data on each node</strong> - counters show what's physically stored on each server</li>
+            <li>🎯 <strong>Why counters differ:</strong>
+                <ul>
+                    <li>Your database uses <strong>eventual consistency</strong> with replication</li>
+                    <li>New tweets might only be on 1-2 nodes initially</li>
+                    <li>Over time, data replicates to achieve consistency</li>
+                    <li>This is normal behavior for distributed databases!</li>
+                </ul>
+            </li>
+            <li>🔄 <strong>Replication in action</strong> - watch counters spread across nodes</li>
+            <li>⚡ <strong>Load balancing</strong> - writes go to random nodes</li>
+        </ul>
+        <p><strong>Auto-refresh:</strong> This page refreshes every 3 seconds to show live data</p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh the page every 3 seconds to show live counters
+setTimeout(function() {
+    window.location.reload();
+}, 3000);
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🐦 Twitter demo with live counters loaded');
+});
+
+// Reset counters function
+function resetCounters() {
+    if (confirm('Are you sure you want to reset all counters to zero?')) {
+        fetch('/api/twitter/reset_counters', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Counters have been reset! The page will refresh to show zero counters.');
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            alert('Error resetting counters: ' + error);
+        });
+    }
+}
+</script>
+
+<style>
+.server-box {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 25px;
+    color: white;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    transition: transform 0.3s ease;
+}
+
+.server-box:hover {
+    transform: translateY(-5px);
+}
+
+.server-header {
+    margin-bottom: 20px;
+}
+
+.server-icon {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.server-header h4 {
+    margin: 10px 0 5px 0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.server-address {
+    font-size: 14px;
+    opacity: 0.8;
+    font-family: monospace;
+}
+
+.counters-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.counter-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.counter-emoji {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.counter-value {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #ffd700;
+}
+
+.counter-label {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.server-status {
+    margin-top: 15px;
+    padding: 8px 15px;
+    background: rgba(34, 197, 94, 0.2);
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+    transform: translateY(-1px);
+}
+</style>
+{% endblock %}

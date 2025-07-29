@@ -1,0 +1,771 @@
+{% extends "base.html" %}
+
+{% block title %}Concurrent Writes Demo - Distributed Database{% endblock %}
+{% block demo_type %}concurrent_writes{% endblock %}
+
+{% block header_title %}🔥 Concurrent Writes & Quorum Consensus{% endblock %}
+{% block header_subtitle %}Demonstrating data consistency under high-concurrency write scenarios{% endblock %}
+
+{% block content %}
+<!-- Quorum Configuration Overview -->
+<div class="card">
+    <h3>⚙️ Quorum Configuration</h3>
+    <div id="quorumConfig" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div style="background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 8px; padding: 20px;">
+            <h4 style="color: #0369a1; margin-bottom: 15px;">📊 Current Setup</h4>
+            <div style="font-size: 14px; line-height: 1.8;">
+                <div><strong>Cluster Size:</strong> <span id="clusterSize">3 nodes</span></div>
+                <div><strong>Replication Factor:</strong> <span id="replicationFactor">3</span></div>
+                <div><strong>Read Quorum:</strong> <span id="readQuorum">2/3 nodes</span></div>
+                <div><strong>Write Quorum:</strong> <span id="writeQuorum">2/3 nodes</span></div>
+            </div>
+        </div>
+        <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px; padding: 20px;">
+            <h4 style="color: #16a34a; margin-bottom: 15px;">✅ Consistency Guarantees</h4>
+            <div style="font-size: 14px; line-height: 1.8;">
+                <div>• <strong>Reads:</strong> Always get latest committed value</div>
+                <div>• <strong>Writes:</strong> Majority consensus required</div>
+                <div>• <strong>Consistency:</strong> Strong consistency guaranteed</div>
+                <div>• <strong>Availability:</strong> Tolerates 1 node failure</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Direct Operations Control -->
+<div class="card" id="activeScenarioCard">
+    <h3>📊 Website Hit Counter Operations</h3>
+    <div id="scenarioStatus" style="margin-bottom: 20px;">
+        <h4 id="activeScenarioName">Website Hit Counter</h4>
+        <div id="currentValue" style="font-size: 18px; font-weight: 600; margin: 10px 0;">
+            Total Hits: <span id="valueDisplay">Loading...</span>
+        </div>
+    </div>
+    
+    <!-- Manual Operations -->
+    <div style="margin-bottom: 20px;">
+        <h4>Manual Operations</h4>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+            <select id="operationType" class="form-input" style="flex: 1; min-width: 150px;">
+                <option value="">Select Operation</option>
+            </select>
+            <input type="number" id="operationAmount" class="form-input" placeholder="Hit Count" value="1" min="1" style="flex: 1; min-width: 100px;">
+            <button class="btn btn-secondary" onclick="performManualOperation()" style="white-space: nowrap;">
+                Execute Operation
+            </button>
+        </div>
+    </div>
+    
+    <!-- Concurrent Operations Tests -->
+    <div style="margin-bottom: 20px;">
+        <h4>🚀 Concurrent Operations Tests</h4>
+        
+        <!-- Simple Test -->
+        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #f8fafc;">
+            <h5 style="margin: 0 0 10px 0; color: #1f2937;">Simple Concurrent Test</h5>
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                <input type="number" id="numOperations" class="form-input" value="3" min="2" max="5" style="width: 80px;">
+                <span style="color: #6b7280; font-size: 14px;">operations (max 5)</span>
+                <button class="btn btn-warning" onclick="startSimpleTest()" id="testBtn" style="margin-left: auto;">
+                    🔥 Run Test
+                </button>
+            </div>
+            <div style="font-size: 12px; color: #6b7280;">
+                Runs multiple operations sequentially with 0.5s delays
+            </div>
+        </div>
+        
+        <!-- Mass Concurrent Test -->
+        <div style="border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #fffbeb;">
+            <h5 style="margin: 0 0 10px 0; color: #92400e;">⚡ Mass Concurrent Test</h5>
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                <select id="massTestType" class="form-input" style="flex: 1;">
+                    <option value="page_views">Multiple Page Views Simultaneously</option>
+                    <option value="api_calls">Multiple API Calls Simultaneously</option>
+                    <option value="mixed">Mixed Website Hits Simultaneously</option>
+                </select>
+                <button class="btn" onclick="startMassTest()" id="massTestBtn" style="background: #f59e0b; color: white;">
+                    ⚡ Run Mass Test
+                </button>
+            </div>
+            <div style="font-size: 12px; color: #92400e;">
+                <strong>True Concurrency:</strong> Executes 10 operations simultaneously to test quorum consistency
+            </div>
+        </div>
+    </div>
+    
+    <!-- Clear Scenario -->
+    <div style="text-align: center; margin-top: 20px;">
+        <button class="btn btn-secondary" onclick="clearScenario()" style="background: #6b7280;">
+            🧹 Clear Scenario & Select New One
+        </button>
+    </div>
+</div>
+
+<!-- Quorum Operations Visualization -->
+<div class="card">
+    <h3>🔄 Quorum Operations Monitor</h3>
+    <div id="operationsMonitor">
+        <div style="text-align: center; color: #6b7280; padding: 40px;">
+            No operations yet. Initialize a scenario and perform operations to see quorum visualization.
+        </div>
+    </div>
+</div>
+
+<!-- Data Consistency Status -->
+<div class="card">
+    <h3>📊 Data Consistency Across Nodes</h3>
+    <div id="consistencyStatus">
+        <div style="text-align: center; color: #6b7280; padding: 40px;">
+            Select an active scenario to monitor data consistency across cluster nodes.
+        </div>
+    </div>
+</div>
+
+<!-- Operations Timeline -->
+<div class="card">
+    <h3>📜 Operations Timeline</h3>
+    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 15px;">
+        <div style="font-size: 14px; color: #6b7280;">Real-time log of concurrent operations</div>
+        <button class="btn btn-secondary" onclick="clearOperationsLog()" style="font-size: 12px; padding: 4px 8px;">
+            Clear Log
+        </button>
+    </div>
+    <div id="operationsTimeline" style="max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px;">
+        <div style="text-align: center; color: #6b7280; padding: 20px;">
+            Operations will appear here as they are executed...
+        </div>
+    </div>
+</div>
+
+<!-- Cluster health section removed to reduce load -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let activeScenario = null;
+    let activeKey = null;
+    let operationsCount = 0;
+    let monitoringInterval = null;
+    
+    // Initialize demo
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🔥 Concurrent writes demo initialized');
+        loadQuorumStatus();
+        
+        // Auto-load current balance
+        loadCurrentBalance();
+        
+        // Load data every 5 seconds
+        setInterval(loadCurrentBalance, 5000);
+        
+        // Populate operation types for Website Hits
+        populateOperationTypes('Website Hit Counter');
+    });
+    
+    // Load current hit count from database
+    function loadCurrentBalance() {
+        fetch('/api/get_current_value/website_hits_demo')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('valueDisplay').textContent = data.current_value.toLocaleString();
+                } else {
+                    document.getElementById('valueDisplay').textContent = '0'; // Default
+                }
+            })
+            .catch(error => {
+                console.error('Error loading hit count:', error);
+                document.getElementById('valueDisplay').textContent = '0'; // Default
+            });
+    }
+    
+    // Load quorum configuration
+    function loadQuorumStatus() {
+        fetch('/api/quorum_status')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('clusterSize').textContent = `${data.cluster_size} nodes`;
+                document.getElementById('replicationFactor').textContent = data.replication_factor;
+                document.getElementById('readQuorum').textContent = `${data.read_quorum}/${data.cluster_size} nodes`;
+                document.getElementById('writeQuorum').textContent = `${data.write_quorum}/${data.cluster_size} nodes`;
+            })
+            .catch(error => {
+                console.error('Error loading quorum status:', error);
+            });
+    }
+    
+    // Initialize a demo scenario
+    function initializeScenario(scenarioName) {
+        showMessage(`Initializing ${scenarioName}...`, 'info');
+        
+        fetch(`/api/initialize_scenario/${encodeURIComponent(scenarioName)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    activeScenario = scenarioName;
+                    activeKey = data.key;
+                    
+                    // Hide scenario selection and show active scenario
+                    document.getElementById('scenarioSelectionCard').style.display = 'none';
+                    document.getElementById('activeScenarioCard').style.display = 'block';
+                    document.getElementById('activeScenarioName').textContent = scenarioName;
+                    document.getElementById('valueDisplay').textContent = data.initial_value.current_value;
+                    
+                    // Populate operation types based on scenario
+                    populateOperationTypes(scenarioName);
+                    
+                    // Start monitoring
+                    startMonitoring();
+                    
+                    showMessage(`✅ ${scenarioName} initialized successfully!`, 'success');
+                } else {
+                    showMessage(`Failed to initialize: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage(`Error: ${error.message}`, 'error');
+            });
+    }
+    
+    // Populate operation types dropdown
+    function populateOperationTypes(scenarioName) {
+        const scenarios = {
+            'Website Hit Counter': [
+                {value: 'page_view', text: 'Page View (+1 Hit)'},
+                {value: 'api_call', text: 'API Call (+1 Hit)'},
+                {value: 'user_action', text: 'User Action (+1 Hit)'}
+            ]
+        };
+        
+        const select = document.getElementById('operationType');
+        select.innerHTML = '<option value="">Select Operation</option>';
+        
+        if (scenarios[scenarioName]) {
+            scenarios[scenarioName].forEach(op => {
+                const option = document.createElement('option');
+                option.value = op.value;
+                option.textContent = op.text;
+                select.appendChild(option);
+            });
+        }
+    }
+    
+    // Perform manual operation
+    function performManualOperation() {
+        const key = 'website_hits_demo'; // Direct key
+        
+        const operationType = document.getElementById('operationType').value;
+        const amount = parseInt(document.getElementById('operationAmount').value);
+        
+        if (!operationType || !amount) {
+            showMessage('Please select operation type and enter hit count', 'error');
+            return;
+        }
+        
+        const operation = {
+            type: operationType,
+            count: amount,
+            description: `Manual ${operationType} operation`
+        };
+        
+        showMessage(`Executing ${operationType} operation...`, 'info');
+        
+        fetch('/api/concurrent_write', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                key: key,
+                operation: operation
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('valueDisplay').textContent = data.new_value.current_value;
+                showMessage('✅ Operation completed successfully!', 'success');
+                
+                // Reload current balance after operation
+                setTimeout(loadCurrentBalance, 1000);
+                
+                // Add to timeline
+                addOperationToTimeline(data);
+                
+                // Update quorum visualization
+                updateQuorumVisualization(data);
+            } else {
+                showMessage(`Operation failed: ${data.message}`, 'error');
+                addOperationToTimeline(data);
+            }
+            
+            // Clear form
+            document.getElementById('operationType').value = '';
+            document.getElementById('operationAmount').value = '';
+        })
+        .catch(error => {
+            showMessage(`Error: ${error.message}`, 'error');
+        });
+    }
+    
+    // Start simple concurrent test
+    function startSimpleTest() {
+        // No need to check activeScenario anymore
+        
+        const numOps = document.getElementById('numOperations').value;
+        const btn = document.getElementById('testBtn');
+        
+        btn.disabled = true;
+        btn.textContent = '🔥 Running Test...';
+        
+        showMessage(`Starting simple test with ${numOps} operations...`, 'info');
+        
+        fetch('/api/simple_concurrent_test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                num_operations: parseInt(numOps)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(`✅ ${data.message}`, 'success');
+                
+                // Add batch header for simple test
+                addSimpleTestBatchHeader(numOps);
+                
+                // Re-enable button after test completes
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = '🔥 Run Test';
+                    showMessage('Simple test completed!', 'info');
+                }, 5000);
+            } else {
+                showMessage(`Failed to start test: ${data.error}`, 'error');
+                btn.disabled = false;
+                btn.textContent = '🔥 Run Test';
+            }
+        })
+        .catch(error => {
+            showMessage(`Error: ${error.message}`, 'error');
+            btn.disabled = false;
+            btn.textContent = '🔥 Run Test';
+        });
+    }
+    
+    // Start mass concurrent test
+    function startMassTest() {
+        const testType = document.getElementById('massTestType').value;
+        const btn = document.getElementById('massTestBtn');
+        
+        btn.disabled = true;
+        btn.textContent = '⚡ Running...';
+        
+        showMessage(`Starting mass ${testType} test with 10 simultaneous operations...`, 'info');
+        
+        // Prepare operations based on type
+        let operations = [];
+        if (testType === 'page_views') {
+            for (let i = 0; i < 10; i++) {
+                operations.push({type: 'page_view', count: Math.floor(Math.random() * 3) + 1, description: `Concurrent page view ${i+1}`});
+            }
+        } else if (testType === 'api_calls') {
+            for (let i = 0; i < 10; i++) {
+                operations.push({type: 'api_call', count: Math.floor(Math.random() * 5) + 1, description: `Concurrent API call ${i+1}`});
+            }
+        } else { // mixed
+            for (let i = 0; i < 10; i++) {
+                const opTypes = ['page_view', 'api_call', 'user_action'];
+                const opType = opTypes[Math.floor(Math.random() * opTypes.length)];
+                const count = Math.floor(Math.random() * 3) + 1;
+                operations.push({type: opType, count: count, description: `Concurrent ${opType} ${i+1}`});
+            }
+        }
+        
+        // Execute all operations simultaneously using Promise.all
+        const key = 'website_hits_demo';
+        const promises = operations.map(operation => 
+            fetch('/api/concurrent_write', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({key: key, operation: operation})
+            }).then(response => response.json())
+        );
+        
+        Promise.all(promises)
+            .then(results => {
+                const successful = results.filter(r => r.success).length;
+                const failed = results.length - successful;
+                
+                // Add batch header to timeline
+                const timeline = document.getElementById('operationsTimeline');
+                const batchHeader = document.createElement('div');
+                batchHeader.style.cssText = 'padding: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; margin-bottom: 10px; border-radius: 8px; text-align: center; font-weight: bold;';
+                batchHeader.innerHTML = `
+                    <div>⚡ MASS CONCURRENT TEST BATCH ⚡</div>
+                    <div style="font-size: 12px; margin-top: 4px;">${results.length} operations executed simultaneously at ${new Date().toLocaleTimeString()}</div>
+                `;
+                
+                if (timeline.children.length === 1 && timeline.children[0].textContent.includes('Operations will appear')) {
+                    timeline.innerHTML = '';
+                }
+                timeline.insertBefore(batchHeader, timeline.firstChild);
+                
+                // Add all operations to timeline with concurrent marker
+                results.forEach((result, index) => {
+                    if (result.operation) {
+                        // Mark as concurrent operation
+                        result.isConcurrent = true;
+                        result.concurrentBatch = Date.now(); // Same timestamp for all operations in this batch
+                        addOperationToTimeline(result);
+                    }
+                });
+                
+                showMessage(`Mass test completed! ✅ ${successful} successful, ❌ ${failed} failed operations`, 'success');
+                
+                // Reload balance after all operations
+                setTimeout(loadCurrentBalance, 1000);
+                
+                // Re-enable button
+                btn.disabled = false;
+                btn.textContent = '⚡ Run Mass Test';
+            })
+            .catch(error => {
+                showMessage(`Mass test error: ${error.message}`, 'error');
+                btn.disabled = false;
+                btn.textContent = '⚡ Run Mass Test';
+            });
+    }
+    
+    // Add batch header for simple test
+    function addSimpleTestBatchHeader(numOps) {
+        const timeline = document.getElementById('operationsTimeline');
+        const batchHeader = document.createElement('div');
+        batchHeader.style.cssText = 'padding: 12px; background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; margin-bottom: 10px; border-radius: 8px; text-align: center; font-weight: bold;';
+        batchHeader.innerHTML = `
+            <div>🔥 SIMPLE CONCURRENT TEST BATCH 🔥</div>
+            <div style="font-size: 12px; margin-top: 4px;">${numOps} operations running sequentially (0.5s delays) at ${new Date().toLocaleTimeString()}</div>
+        `;
+        
+        if (timeline.children.length === 1 && timeline.children[0].textContent.includes('Operations will appear')) {
+            timeline.innerHTML = '';
+        }
+        timeline.insertBefore(batchHeader, timeline.firstChild);
+    }
+    
+    // Clear scenario and return to selection
+    function clearScenario() {
+        fetch('/api/clear_scenario', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reset UI
+                activeScenario = null;
+                activeKey = null;
+                if (monitoringInterval) clearInterval(monitoringInterval);
+                
+                // Show scenario selection, hide active scenario
+                document.getElementById('scenarioSelectionCard').style.display = 'block';
+                document.getElementById('activeScenarioCard').style.display = 'none';
+                
+                // Clear displays
+                document.getElementById('operationsMonitor').innerHTML = '<div style="text-align: center; color: #6b7280; padding: 40px;">Select a scenario to start monitoring operations.</div>';
+                document.getElementById('consistencyStatus').innerHTML = '<div style="text-align: center; color: #6b7280; padding: 40px;">Select a scenario to monitor data consistency.</div>';
+                clearOperationsLog();
+                
+                showMessage('✅ Scenario cleared. Select a new scenario.', 'success');
+            } else {
+                showMessage(`Failed to clear scenario: ${data.error}`, 'error');
+            }
+        })
+        .catch(error => {
+            showMessage(`Error: ${error.message}`, 'error');
+        });
+    }
+    
+    // Add operation to timeline
+    function addOperationToTimeline(operationData) {
+        const timeline = document.getElementById('operationsTimeline');
+        
+        // Clear placeholder if it exists
+        if (timeline.children.length === 1 && timeline.children[0].textContent.includes('Operations will appear')) {
+            timeline.innerHTML = '';
+        }
+        
+        const operationDiv = document.createElement('div');
+        const isConcurrent = operationData.isConcurrent;
+        const isSimpleTest = operationData.isSimpleTest;
+        
+        let borderColor, backgroundColor, badge;
+        if (isConcurrent) {
+            borderColor = '#f59e0b';
+            backgroundColor = '#fffbeb';
+            badge = '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">⚡ CONCURRENT</span>';
+        } else if (isSimpleTest) {
+            borderColor = '#3b82f6';
+            backgroundColor = '#f0f9ff';
+            badge = '<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">🔥 SIMPLE TEST</span>';
+        } else {
+            borderColor = '#e5e7eb';
+            backgroundColor = 'white';
+            badge = '';
+        }
+        
+        operationDiv.style.cssText = `padding: 10px; border: 2px solid ${borderColor}; background: ${backgroundColor}; margin-bottom: 8px; border-radius: 6px;`;
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const quorumStatus = operationData.quorum_status;
+        const success = operationData.success;
+        
+        operationDiv.innerHTML = `
+            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
+                <div style="font-weight: 600; color: ${success ? '#16a34a' : '#dc2626'};">
+                    ${success ? '✅' : '❌'} ${operationData.operation.type.toUpperCase()} Operation
+                    ${badge}
+                </div>
+                <div style="font-size: 12px; color: #6b7280;">${timestamp}</div>
+            </div>
+            <div style="font-size: 14px; margin-bottom: 8px;">
+                Amount: ${operationData.operation.amount || operationData.operation.quantity || operationData.operation.count}
+                ${operationData.old_value ? ` | ${operationData.old_value.current_value} → ${operationData.new_value ? operationData.new_value.current_value : 'Failed'}` : ''}
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
+                <div style="background: ${quorumStatus.read_quorum_met ? '#f0fdf4' : '#fef2f2'}; padding: 6px; border-radius: 4px;">
+                    📖 Read Quorum: ${quorumStatus.read_quorum_met ? '✅ Met' : '❌ Failed'}
+                </div>
+                <div style="background: ${quorumStatus.write_quorum_met ? '#f0fdf4' : '#fef2f2'}; padding: 6px; border-radius: 4px;">
+                    ✏️ Write Quorum: ${quorumStatus.write_quorum_met ? '✅ Met' : '❌ Failed'}
+                </div>
+            </div>
+        `;
+        
+        timeline.insertBefore(operationDiv, timeline.firstChild);
+        
+        // Keep only last 20 operations
+        while (timeline.children.length > 20) {
+            timeline.removeChild(timeline.lastChild);
+        }
+        
+        operationsCount++;
+    }
+    
+    // Update quorum visualization
+    function updateQuorumVisualization(operationData) {
+        const monitor = document.getElementById('operationsMonitor');
+        
+        const readResults = operationData.read_results;
+        const writeResults = operationData.write_results;
+        
+        monitor.innerHTML = `
+            <div style="margin-bottom: 20px;">
+                <h4>Latest Operation Quorum Analysis</h4>
+                <div style="font-size: 14px; color: #6b7280; margin-bottom: 15px;">
+                    Operation: ${operationData.operation.type} | Amount: ${operationData.operation.amount || operationData.operation.quantity || operationData.operation.count}
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="border: 2px solid #3b82f6; border-radius: 8px; padding: 15px;">
+                    <h5 style="color: #1e40af; margin-bottom: 10px;">📖 Read Phase</h5>
+                    <div style="margin-bottom: 10px; font-size: 14px;">
+                        Quorum: ${readResults.filter(r => r.success).length}/3 nodes
+                        <span style="color: ${operationData.quorum_status.read_quorum_met ? '#16a34a' : '#dc2626'};">
+                            ${operationData.quorum_status.read_quorum_met ? '✅ Met' : '❌ Failed'}
+                        </span>
+                    </div>
+                    <div class="node-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                        ${readResults.map((result, i) => `
+                            <div style="padding: 8px; background: ${result.success ? '#f0fdf4' : '#fef2f2'}; border-radius: 4px; text-align: center; font-size: 12px;">
+                                <div style="font-weight: 600;">Node ${i+1}</div>
+                                <div style="color: ${result.success ? '#16a34a' : '#dc2626'};">
+                                    ${result.success ? '✅ Success' : '❌ Failed'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div style="border: 2px solid #f59e0b; border-radius: 8px; padding: 15px;">
+                    <h5 style="color: #d97706; margin-bottom: 10px;">✏️ Write Phase</h5>
+                    <div style="margin-bottom: 10px; font-size: 14px;">
+                        Quorum: ${writeResults.filter(w => w.success).length}/3 nodes
+                        <span style="color: ${operationData.quorum_status.write_quorum_met ? '#16a34a' : '#dc2626'};">
+                            ${operationData.quorum_status.write_quorum_met ? '✅ Met' : '❌ Failed'}
+                        </span>
+                    </div>
+                    <div class="node-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                        ${writeResults.map((result, i) => `
+                            <div style="padding: 8px; background: ${result.success ? '#f0fdf4' : '#fef2f2'}; border-radius: 4px; text-align: center; font-size: 12px;">
+                                <div style="font-weight: 600;">Node ${i+1}</div>
+                                <div style="color: ${result.success ? '#16a34a' : '#dc2626'};">
+                                    ${result.success ? '✅ Success' : '❌ Failed'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Start monitoring data consistency
+    function startMonitoring() {
+        if (monitoringInterval) clearInterval(monitoringInterval);
+        
+        // Only check consistency every 10 seconds instead of 3
+        monitoringInterval = setInterval(() => {
+            if (activeKey) {
+                loadDataConsistency();
+            }
+        }, 10000);
+        
+        // Initial load
+        loadDataConsistency();
+    }
+    
+    // Load data consistency status
+    function loadDataConsistency() {
+        if (!activeKey) return;
+        
+        fetch(`/api/data_consistency/${encodeURIComponent(activeKey)}`)
+            .then(response => response.json())
+            .then(data => {
+                updateConsistencyDisplay(data);
+            })
+            .catch(error => {
+                console.error('Error loading consistency data:', error);
+            });
+    }
+    
+    // Update consistency display
+    function updateConsistencyDisplay(data) {
+        const container = document.getElementById('consistencyStatus');
+        const consistency = data.consistency;
+        const nodes = data.nodes;
+        
+        container.innerHTML = `
+            <div style="margin-bottom: 20px; padding: 15px; background: ${consistency.is_consistent ? '#f0fdf4' : '#fefce8'}; border: 2px solid ${consistency.is_consistent ? '#22c55e' : '#facc15'}; border-radius: 8px;">
+                <h4 style="color: ${consistency.is_consistent ? '#16a34a' : '#ca8a04'}; margin-bottom: 10px;">
+                    ${consistency.is_consistent ? '✅ Consistent' : '⏳ Converging'} - ${consistency.consistency_level} Consistency
+                </h4>
+                <div style="color: ${consistency.is_consistent ? '#15803d' : '#a16207'}; font-size: 14px;">
+                    ${consistency.healthy_nodes}/${consistency.total_nodes} nodes healthy | 
+                    Quorum: ${consistency.quorum_available ? '✅ Available' : '❌ Lost'}
+                </div>
+            </div>
+            
+            <div class="node-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                ${Object.entries(nodes).map(([nodeId, nodeData]) => `
+                    <div class="node-card" style="border: 2px solid ${nodeData.status === 'healthy' ? '#22c55e' : '#ef4444'}; border-radius: 8px; padding: 15px;">
+                        <h5>${nodeId.toUpperCase()}</h5>
+                        <div style="color: #6b7280; font-size: 12px; margin-bottom: 10px;">${nodeData.node}</div>
+                        <div style="font-size: 14px;">
+                            <div>Status: ${nodeData.status === 'healthy' ? '✅ Healthy' : '❌ ' + nodeData.status}</div>
+                            ${nodeData.data ? `
+                                <div>Value: ${nodeData.data.current_value}</div>
+                                <div>Version: ${nodeData.version}</div>
+                                <div>Operations: ${nodeData.data.operations_log ? nodeData.data.operations_log.length : 0}</div>
+                            ` : `
+                                <div style="color: #ef4444;">No data available</div>
+                            `}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    // Removed cluster health functions to reduce load
+    
+    // Clear operations log
+    function clearOperationsLog() {
+        const timeline = document.getElementById('operationsTimeline');
+        timeline.innerHTML = `
+            <div style="text-align: center; color: #6b7280; padding: 20px;">
+                Operations will appear here as they are executed...
+            </div>
+        `;
+        operationsCount = 0;
+        showMessage('Operations log cleared', 'info');
+    }
+    
+    // Socket.IO event handlers
+    socket.on('concurrent_operation', function(data) {
+        if (data.key === activeKey) {
+            // Update current value display
+            if (data.success && data.results.writes) {
+                // Get new value from the operation response
+                // This will be updated by the next consistency check
+            }
+            
+            // Add to timeline
+            addOperationToTimeline({
+                operation: data.operation,
+                success: data.success,
+                quorum_status: data.quorum_status,
+                read_results: data.results.reads,
+                write_results: data.results.writes
+            });
+            
+            // Update quorum visualization
+            updateQuorumVisualization({
+                operation: data.operation,
+                quorum_status: data.quorum_status,
+                read_results: data.results.reads,
+                write_results: data.results.writes
+            });
+        }
+    });
+    
+    // Simple test operation handler
+    socket.on('simple_test_operation', function(data) {
+        // Mark as simple test operation
+        data.isSimpleTest = true;
+        
+        // Add to timeline
+        addOperationToTimeline(data);
+        
+        // Update current balance display
+        if (data.success && data.new_value) {
+            document.getElementById('valueDisplay').textContent = data.new_value.current_value;
+        }
+        
+        // Update quorum visualization if available
+        if (data.quorum_status) {
+            updateQuorumVisualization(data);
+        }
+    });
+</script>
+
+<style>
+.scenario-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.node-card {
+    transition: all 0.3s ease;
+}
+
+.node-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#operationsTimeline::-webkit-scrollbar {
+    width: 6px;
+}
+
+#operationsTimeline::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+#operationsTimeline::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+</style>
+{% endblock %}
