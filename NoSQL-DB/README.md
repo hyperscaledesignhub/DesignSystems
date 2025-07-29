@@ -2,6 +2,8 @@
 
 A production-ready distributed key-value database implementation with advanced features including replication, anti-entropy synchronization, causal consistency, vector clocks, and comprehensive monitoring.
 
+![Distributed Key-Value Database Architecture](images/keyvaluedb.png)
+
 ## 🚀 Features
 
 ### Core Database Features
