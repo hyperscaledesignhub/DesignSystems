@@ -1,0 +1,701 @@
+{% extends "base.html" %}
+
+{% block title %}CRDT Counter Demo - Distributed Database{% endblock %}
+{% block demo_type %}crdt_counter{% endblock %}
+
+{% block header_title %}🚀 CRDT Counter - Conflict-Free Solution{% endblock %}
+{% block header_subtitle %}Solving race conditions with Conflict-free Replicated Data Types (CRDTs){% endblock %}
+
+{% block content %}
+<!-- Problem & Solution Overview -->
+<div class="card">
+    <h3>🎯 Race Condition Solution with CRDT Counters</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; padding: 20px;">
+            <h4 style="color: #dc2626; margin-bottom: 15px;">❌ Problem: Quorum-Based Approach</h4>
+            <div style="font-size: 14px; line-height: 1.8;">
+                <div>• <strong>Race Conditions:</strong> Lost increments due to concurrent read-modify-write</div>
+                <div>• <strong>Example:</strong> 5 operations → only 1 increment (4 lost!)</div>
+                <div>• <strong>Root Cause:</strong> All operations read same value, increment locally</div>
+                <div>• <strong>Result:</strong> Last write wins, earlier increments lost</div>
+            </div>
+        </div>
+        <div style="background: #f0fdf4; border: 2px solid #22c55e; border-radius: 8px; padding: 20px;">
+            <h4 style="color: #16a34a; margin-bottom: 15px;">✅ Solution: CRDT Counters</h4>
+            <div style="font-size: 14px; line-height: 1.8;">
+                <div>• <strong>Conflict-Free:</strong> All increments are preserved automatically</div>
+                <div>• <strong>Guaranteed:</strong> 5 operations → 5 increments (0 lost!)</div>
+                <div>• <strong>How:</strong> Each node tracks its own contributions</div>
+                <div>• <strong>Result:</strong> Sum of all contributions = total value</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CRDT Counter Configuration -->
+<div class="card">
+    <h3>⚙️ CRDT Counter Configuration</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div style="background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 8px; padding: 20px;">
+            <h4 style="color: #0369a1; margin-bottom: 15px;">🔧 G-Counter Setup</h4>
+            <div style="font-size: 14px; line-height: 1.8;">
+                <div><strong>Type:</strong> G-Counter (Grow-only)</div>
+                <div><strong>Operations:</strong> Increment only (conflict-free)</div>
+                <div><strong>Nodes:</strong> Each tracks its own contributions</div>
+                <div><strong>Merge:</strong> Sum of all node contributions</div>
+            </div>
+        </div>
+        <div style="background: #fefce8; border: 2px solid #facc15; border-radius: 8px; padding: 20px;">
+            <h4 style="color: #ca8a04; margin-bottom: 15px;">🛡️ Conflict Resolution</h4>
+            <div style="font-size: 14px; line-height: 1.8;">
+                <div><strong>Commutative:</strong> Order doesn't matter</div>
+                <div><strong>Associative:</strong> Grouping doesn't matter</div>
+                <div><strong>Idempotent:</strong> Applying twice = applying once</div>
+                <div><strong>Monotonic:</strong> Values only increase</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Counter Operations -->
+<div class="card" id="activeCounterCard">
+    <h3>📊 Website Hit Counter (CRDT-Based)</h3>
+    <div id="counterStatus" style="margin-bottom: 20px;">
+        <h4 id="activeCounterName">Website Hit Counter (CRDT)</h4>
+        <div id="currentValue" style="font-size: 18px; font-weight: 600; margin: 10px 0;">
+            Total Hits: <span id="valueDisplay">Loading...</span>
+        </div>
+        <div id="nodeBreakdown" style="font-size: 14px; color: #6b7280; margin: 10px 0;">
+            Per-node contributions will appear here...
+        </div>
+    </div>
+    
+    <!-- Manual Operations -->
+    <div style="margin-bottom: 20px;">
+        <h4>Manual CRDT Operations</h4>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+            <select id="operationType" class="form-input" style="flex: 1; min-width: 150px;">
+                <option value="">Select Operation</option>
+                <option value="page_view">Page View (+1 Hit)</option>
+                <option value="api_call">API Call (+1 Hit)</option>
+                <option value="user_action">User Action (+1 Hit)</option>
+            </select>
+            <input type="number" id="operationAmount" class="form-input" placeholder="Hit Count" value="1" min="1" max="10" style="flex: 1; min-width: 100px;">
+            <button class="btn btn-secondary" onclick="performManualCRDTOperation()" style="white-space: nowrap;">
+                ⚡ Execute CRDT Increment
+            </button>
+        </div>
+    </div>
+    
+    <!-- CRDT Tests -->
+    <div style="margin-bottom: 20px;">
+        <h4>🚀 CRDT Conflict-Free Tests</h4>
+        
+        <!-- Simple CRDT Test -->
+        <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #f8fafc;">
+            <h5 style="margin: 0 0 10px 0; color: #1f2937;">Simple CRDT Test</h5>
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                <input type="number" id="numOperations" class="form-input" value="3" min="2" max="5" style="width: 80px;">
+                <span style="color: #6b7280; font-size: 14px;">operations (max 5)</span>
+                <button class="btn btn-warning" onclick="startSimpleCRDTTest()" id="testBtn" style="margin-left: auto;">
+                    🔥 Run CRDT Test
+                </button>
+            </div>
+            <div style="font-size: 12px; color: #6b7280;">
+                Sequential CRDT increments using different nodes - no conflicts guaranteed
+            </div>
+        </div>
+        
+        <!-- Mass Concurrent CRDT Test -->
+        <div style="border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #fffbeb;">
+            <h5 style="margin: 0 0 10px 0; color: #92400e;">⚡ Mass Concurrent CRDT Test</h5>
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                <input type="number" id="massNumOps" class="form-input" value="10" min="5" max="20" style="width: 80px;">
+                <span style="color: #92400e; font-size: 14px;">concurrent operations</span>
+                <button class="btn" onclick="startMassCRDTTest()" id="massTestBtn" style="background: #f59e0b; color: white; margin-left: auto;">
+                    ⚡ Run Mass CRDT Test
+                </button>
+            </div>
+            <div style="font-size: 12px; color: #92400e;">
+                <strong>True Concurrency:</strong> All operations execute simultaneously - CRDT guarantees NO lost increments!
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CRDT Counter State Visualization -->
+<div class="card">
+    <h3>🔍 CRDT Counter State Monitor</h3>
+    <div id="crdtStateMonitor">
+        <div style="text-align: center; color: #6b7280; padding: 40px;">
+            Perform CRDT operations to see per-node contributions and conflict-free merging.
+        </div>
+    </div>
+</div>
+
+<!-- Counter Consistency Status -->
+<div class="card">
+    <h3>📊 CRDT Consistency Across Nodes</h3>
+    <div id="consistencyStatus">
+        <div style="text-align: center; color: #6b7280; padding: 40px;">
+            CRDT counter consistency monitoring will appear here.
+        </div>
+    </div>
+</div>
+
+<!-- Operations Timeline -->
+<div class="card">
+    <h3>📜 CRDT Operations Timeline</h3>
+    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 15px;">
+        <div style="font-size: 14px; color: #6b7280;">Real-time log of conflict-free CRDT operations</div>
+        <button class="btn btn-secondary" onclick="clearOperationsLog()" style="font-size: 12px; padding: 4px 8px;">
+            Clear Log
+        </button>
+    </div>
+    <div id="operationsTimeline" style="max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px;">
+        <div style="text-align: center; color: #6b7280; padding: 20px;">
+            CRDT operations will appear here as they are executed...
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let operationsCount = 0;
+    let monitoringInterval = null;
+    let currentKey = 'website_hits_crdt_demo';
+    
+    // Initialize demo
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 CRDT counter demo initialized');
+        loadClusterStatus();
+        
+        // Auto-load current counter value
+        loadCurrentCounterValue();
+        
+        // Load data every 5 seconds
+        setInterval(loadCurrentCounterValue, 5000);
+        
+        // Load consistency status every 10 seconds
+        setInterval(loadCounterConsistency, 10000);
+    });
+    
+    // Load current CRDT counter value from database
+    function loadCurrentCounterValue() {
+        fetch(`/api/get_counter_value/${currentKey}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('valueDisplay').textContent = data.current_value.toLocaleString();
+                    updateNodeBreakdown(data.nodes);
+                } else {
+                    document.getElementById('valueDisplay').textContent = '0';
+                    document.getElementById('nodeBreakdown').textContent = 'No data yet - start incrementing!';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading counter value:', error);
+                document.getElementById('valueDisplay').textContent = '0';
+            });
+    }
+    
+    // Update node breakdown display
+    function updateNodeBreakdown(nodes) {
+        const breakdown = document.getElementById('nodeBreakdown');
+        if (Object.keys(nodes).length === 0) {
+            breakdown.textContent = 'No contributions yet - perform some operations!';
+            return;
+        }
+        
+        const contributions = Object.entries(nodes)
+            .map(([nodeId, count]) => `${nodeId}: ${count}`)
+            .join(', ');
+        breakdown.innerHTML = `<strong>Node contributions:</strong> ${contributions}`;
+    }
+    
+    // Load cluster status
+    function loadClusterStatus() {
+        fetch('/api/cluster_status')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Cluster status loaded:', data);
+            })
+            .catch(error => {
+                console.error('Error loading cluster status:', error);
+            });
+    }
+    
+    // Perform manual CRDT operation
+    function performManualCRDTOperation() {
+        const operationType = document.getElementById('operationType').value;
+        const amount = parseInt(document.getElementById('operationAmount').value);
+        
+        if (!operationType || !amount) {
+            showMessage('Please select operation type and enter amount', 'error');
+            return;
+        }
+        
+        const operation = {
+            type: operationType,
+            amount: amount,
+            description: `Manual ${operationType} operation`
+        };
+        
+        showMessage(`Executing CRDT ${operationType} operation (+${amount})...`, 'info');
+        
+        fetch('/api/crdt_increment', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                key: currentKey,
+                operation: operation
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('valueDisplay').textContent = data.new_value.toLocaleString();
+                showMessage('✅ CRDT operation completed successfully - no conflicts possible!', 'success');
+                
+                // Reload current balance after operation
+                setTimeout(loadCurrentCounterValue, 1000);
+                
+                // Add to timeline
+                addOperationToTimeline(data);
+                
+                // Update CRDT state visualization
+                updateCRDTStateVisualization(data);
+            } else {
+                showMessage(`CRDT operation failed: ${data.error}`, 'error');
+                addOperationToTimeline(data);
+            }
+            
+            // Clear form
+            document.getElementById('operationType').value = '';
+            document.getElementById('operationAmount').value = '';
+        })
+        .catch(error => {
+            showMessage(`Error: ${error.message}`, 'error');
+        });
+    }
+    
+    // Start simple CRDT test
+    function startSimpleCRDTTest() {
+        const numOps = document.getElementById('numOperations').value;
+        const btn = document.getElementById('testBtn');
+        
+        btn.disabled = true;
+        btn.textContent = '🔥 Running CRDT Test...';
+        
+        showMessage(`Starting simple CRDT test with ${numOps} operations...`, 'info');
+        
+        fetch('/api/simple_crdt_test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                key: currentKey,
+                num_operations: parseInt(numOps)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(`✅ ${data.message}`, 'success');
+                
+                // Add batch header for simple test
+                addSimpleCRDTTestBatchHeader(numOps);
+                
+                // Re-enable button after test completes
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = '🔥 Run CRDT Test';
+                    showMessage('Simple CRDT test completed - all increments preserved!', 'success');
+                }, 5000);
+            } else {
+                showMessage(`Failed to start test: ${data.error}`, 'error');
+                btn.disabled = false;
+                btn.textContent = '🔥 Run CRDT Test';
+            }
+        })
+        .catch(error => {
+            showMessage(`Error: ${error.message}`, 'error');
+            btn.disabled = false;
+            btn.textContent = '🔥 Run CRDT Test';
+        });
+    }
+    
+    // Start mass concurrent CRDT test
+    function startMassCRDTTest() {
+        const numOps = document.getElementById('massNumOps').value;
+        const btn = document.getElementById('massTestBtn');
+        
+        btn.disabled = true;
+        btn.textContent = '⚡ Running...';
+        
+        showMessage(`Starting mass CRDT test with ${numOps} truly concurrent operations...`, 'info');
+        
+        fetch('/api/mass_concurrent_crdt_test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                key: currentKey,
+                num_operations: parseInt(numOps)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(`✅ ${data.message}`, 'success');
+                
+                // Add batch header for mass test
+                addMassCRDTTestBatchHeader(numOps);
+                
+                // Re-enable button after test completes
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = '⚡ Run Mass CRDT Test';
+                }, 8000);
+            } else {
+                showMessage(`Failed to start test: ${data.error}`, 'error');
+                btn.disabled = false;
+                btn.textContent = '⚡ Run Mass CRDT Test';
+            }
+        })
+        .catch(error => {
+            showMessage(`Error: ${error.message}`, 'error');
+            btn.disabled = false;
+            btn.textContent = '⚡ Run Mass CRDT Test';
+        });
+    }
+    
+    // Add batch header for simple CRDT test
+    function addSimpleCRDTTestBatchHeader(numOps) {
+        const timeline = document.getElementById('operationsTimeline');
+        const batchHeader = document.createElement('div');
+        batchHeader.style.cssText = 'padding: 12px; background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; margin-bottom: 10px; border-radius: 8px; text-align: center; font-weight: bold;';
+        batchHeader.innerHTML = `
+            <div>🔥 SIMPLE CRDT TEST BATCH 🔥</div>
+            <div style="font-size: 12px; margin-top: 4px;">${numOps} CRDT operations using different nodes at ${new Date().toLocaleTimeString()}</div>
+        `;
+        
+        if (timeline.children.length === 1 && timeline.children[0].textContent.includes('CRDT operations will appear')) {
+            timeline.innerHTML = '';
+        }
+        timeline.insertBefore(batchHeader, timeline.firstChild);
+    }
+    
+    // Add batch header for mass CRDT test
+    function addMassCRDTTestBatchHeader(numOps) {
+        const timeline = document.getElementById('operationsTimeline');
+        const batchHeader = document.createElement('div');
+        batchHeader.style.cssText = 'padding: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; margin-bottom: 10px; border-radius: 8px; text-align: center; font-weight: bold;';
+        batchHeader.innerHTML = `
+            <div>⚡ MASS CONCURRENT CRDT TEST ⚡</div>
+            <div style="font-size: 12px; margin-top: 4px;">${numOps} operations executed SIMULTANEOUSLY at ${new Date().toLocaleTimeString()}</div>
+        `;
+        
+        if (timeline.children.length === 1 && timeline.children[0].textContent.includes('CRDT operations will appear')) {
+            timeline.innerHTML = '';
+        }
+        timeline.insertBefore(batchHeader, timeline.firstChild);
+    }
+    
+    // Add operation to timeline
+    function addOperationToTimeline(operationData) {
+        const timeline = document.getElementById('operationsTimeline');
+        
+        // Clear placeholder if it exists
+        if (timeline.children.length === 1 && timeline.children[0].textContent.includes('CRDT operations will appear')) {
+            timeline.innerHTML = '';
+        }
+        
+        const operationDiv = document.createElement('div');
+        const isSimpleTest = operationData.isSimpleTest;
+        const isMassTest = operationData.isMassTest;
+        
+        let borderColor, backgroundColor, badge;
+        if (isMassTest) {
+            borderColor = '#f59e0b';
+            backgroundColor = '#fffbeb';
+            badge = '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">⚡ MASS CONCURRENT</span>';
+        } else if (isSimpleTest) {
+            borderColor = '#3b82f6';
+            backgroundColor = '#f0f9ff';
+            badge = '<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">🔥 SIMPLE TEST</span>';
+        } else {
+            borderColor = '#22c55e';
+            backgroundColor = '#f0fdf4';
+            badge = '<span style="background: #22c55e; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">✅ CRDT</span>';
+        }
+        
+        operationDiv.style.cssText = `padding: 10px; border: 2px solid ${borderColor}; background: ${backgroundColor}; margin-bottom: 8px; border-radius: 6px;`;
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const success = operationData.success;
+        const nodeUsed = operationData.node_used || 'unknown';
+        const responseTime = operationData.response_time ? `${(operationData.response_time * 1000).toFixed(1)}ms` : 'N/A';
+        
+        operationDiv.innerHTML = `
+            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
+                <div style="font-weight: 600; color: ${success ? '#16a34a' : '#dc2626'};">
+                    ${success ? '✅' : '❌'} CRDT ${operationData.operation.type.toUpperCase()}
+                    ${badge}
+                </div>
+                <div style="font-size: 12px; color: #6b7280;">${timestamp}</div>
+            </div>
+            <div style="font-size: 14px; margin-bottom: 8px;">
+                Amount: +${operationData.operation.amount} | Node: ${nodeUsed} | Time: ${responseTime}
+                ${operationData.old_value !== undefined ? ` | ${operationData.old_value} → ${operationData.new_value}` : ''}
+            </div>
+            <div style="font-size: 12px; color: #16a34a; background: #f0fdf4; padding: 6px; border-radius: 4px;">
+                🛡️ CRDT Guarantee: Conflict-free operation - no race conditions possible!
+            </div>
+        `;
+        
+        timeline.insertBefore(operationDiv, timeline.firstChild);
+        
+        // Keep only last 20 operations
+        while (timeline.children.length > 20) {
+            timeline.removeChild(timeline.lastChild);
+        }
+        
+        operationsCount++;
+    }
+    
+    // Update CRDT state visualization
+    function updateCRDTStateVisualization(operationData) {
+        const monitor = document.getElementById('crdtStateMonitor');
+        const counterState = operationData.counter_state;
+        
+        if (!counterState) return;
+        
+        const totalValue = counterState.value || 0;
+        const nodeContributions = counterState.nodes || {};
+        
+        monitor.innerHTML = `
+            <div style="margin-bottom: 20px;">
+                <h4>Latest CRDT Operation Analysis</h4>
+                <div style="font-size: 14px; color: #6b7280; margin-bottom: 15px;">
+                    Operation: ${operationData.operation.type} | Amount: +${operationData.operation.amount} | Node: ${operationData.node_used}
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="border: 2px solid #22c55e; border-radius: 8px; padding: 15px;">
+                    <h5 style="color: #16a34a; margin-bottom: 10px;">🔢 Total Counter Value</h5>
+                    <div style="font-size: 24px; font-weight: bold; color: #16a34a; margin-bottom: 10px;">
+                        ${totalValue.toLocaleString()}
+                    </div>
+                    <div style="font-size: 12px; color: #6b7280;">
+                        Sum of all node contributions
+                    </div>
+                </div>
+                
+                <div style="border: 2px solid #3b82f6; border-radius: 8px; padding: 15px;">
+                    <h5 style="color: #1e40af; margin-bottom: 10px;">🏢 Per-Node Contributions</h5>
+                    <div style="font-size: 14px;">
+                        ${Object.entries(nodeContributions).length === 0 ? 
+                            '<div style="color: #6b7280;">No contributions yet</div>' :
+                            Object.entries(nodeContributions).map(([nodeId, count]) => `
+                                <div style="display: flex; justify-content: between; margin-bottom: 5px;">
+                                    <span>${nodeId}:</span>
+                                    <span style="font-weight: 600; color: #1e40af;">${count}</span>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 15px; padding: 10px; background: #f0fdf4; border: 1px solid #22c55e; border-radius: 6px;">
+                <div style="font-size: 12px; color: #15803d;">
+                    <strong>🛡️ CRDT Guarantee:</strong> This increment is conflict-free and will never be lost, 
+                    even if performed concurrently with other operations on different nodes.
+                </div>
+            </div>
+        `;
+    }
+    
+    // Load counter consistency status
+    function loadCounterConsistency() {
+        fetch(`/api/counter_consistency/${currentKey}`)
+            .then(response => response.json())
+            .then(data => {
+                updateConsistencyDisplay(data);
+            })
+            .catch(error => {
+                console.error('Error loading consistency data:', error);
+            });
+    }
+    
+    // Update consistency display
+    function updateConsistencyDisplay(data) {
+        const container = document.getElementById('consistencyStatus');
+        const consistency = data.consistency;
+        const nodes = data.nodes;
+        
+        container.innerHTML = `
+            <div style="margin-bottom: 20px; padding: 15px; background: ${consistency.is_consistent ? '#f0fdf4' : '#fefce8'}; border: 2px solid ${consistency.is_consistent ? '#22c55e' : '#facc15'}; border-radius: 8px;">
+                <h4 style="color: ${consistency.is_consistent ? '#16a34a' : '#ca8a04'}; margin-bottom: 10px;">
+                    ${consistency.is_consistent ? '✅ Fully Consistent' : '⏳ Converging'} - ${consistency.consistency_level}
+                </h4>
+                <div style="color: ${consistency.is_consistent ? '#15803d' : '#a16207'}; font-size: 14px;">
+                    ${consistency.healthy_nodes}/${consistency.total_nodes} nodes healthy | 
+                    Values: ${consistency.values.join(', ')} | CRDT Guarantee: Conflict-free merging
+                </div>
+            </div>
+            
+            <div class="node-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                ${Object.entries(nodes).map(([nodeId, nodeData]) => `
+                    <div class="node-card" style="border: 2px solid ${nodeData.status === 'healthy' ? '#22c55e' : '#ef4444'}; border-radius: 8px; padding: 15px;">
+                        <h5>${nodeId.toUpperCase()}</h5>
+                        <div style="color: #6b7280; font-size: 12px; margin-bottom: 10px;">${nodeData.node}</div>
+                        <div style="font-size: 14px;">
+                            <div>Status: ${nodeData.status === 'healthy' ? '✅ Healthy' : '❌ ' + nodeData.status}</div>
+                            ${nodeData.status === 'healthy' ? `
+                                <div>Counter Value: ${nodeData.value}</div>
+                                <div>Node Contributions: ${Object.keys(nodeData.node_contributions || {}).length}</div>
+                            ` : `
+                                <div style="color: #ef4444;">Counter not available</div>
+                            `}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    // Clear operations log
+    function clearOperationsLog() {
+        const timeline = document.getElementById('operationsTimeline');
+        timeline.innerHTML = `
+            <div style="text-align: center; color: #6b7280; padding: 20px;">
+                CRDT operations will appear here as they are executed...
+            </div>
+        `;
+        operationsCount = 0;
+        showMessage('CRDT operations log cleared', 'info');
+    }
+    
+    // Socket.IO event handlers
+    socket.on('crdt_operation', function(data) {
+        // Update current value display
+        if (data.success) {
+            document.getElementById('valueDisplay').textContent = data.new_value.toLocaleString();
+            if (data.counter_state && data.counter_state.nodes) {
+                updateNodeBreakdown(data.counter_state.nodes);
+            }
+        }
+        
+        // Add to timeline
+        addOperationToTimeline(data);
+        
+        // Update CRDT visualization
+        updateCRDTStateVisualization(data);
+        
+        // Reload consistency status
+        setTimeout(loadCounterConsistency, 1000);
+    });
+    
+    // Simple test operation handler
+    socket.on('simple_crdt_test_operation', function(data) {
+        // Mark as simple test operation
+        data.isSimpleTest = true;
+        
+        // Add to timeline
+        addOperationToTimeline(data);
+        
+        // Update current value display
+        if (data.success && data.new_value) {
+            document.getElementById('valueDisplay').textContent = data.new_value.toLocaleString();
+        }
+        
+        // Reload counter value and consistency
+        setTimeout(() => {
+            loadCurrentCounterValue();
+            loadCounterConsistency();
+        }, 500);
+    });
+    
+    // Mass test batch header handler
+    socket.on('mass_crdt_batch_header', function(data) {
+        const timeline = document.getElementById('operationsTimeline');
+        const batchHeader = document.createElement('div');
+        batchHeader.style.cssText = 'padding: 12px; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; margin-bottom: 10px; border-radius: 8px; text-align: center; font-weight: bold;';
+        batchHeader.innerHTML = `
+            <div>⚡ MASS CONCURRENT CRDT TEST BATCH ⚡</div>
+            <div style="font-size: 12px; margin-top: 4px;">${data.num_operations} CRDT operations executed simultaneously at ${new Date().toLocaleTimeString()}</div>
+        `;
+        
+        if (timeline.children.length === 1 && timeline.children[0].textContent.includes('CRDT operations will appear')) {
+            timeline.innerHTML = '';
+        }
+        timeline.insertBefore(batchHeader, timeline.firstChild);
+    });
+    
+    // Mass test completion handler
+    socket.on('mass_crdt_test_complete', function(data) {
+        const success = data.success;
+        const message = success 
+            ? `🎉 CRDT SUCCESS! Expected ${data.total_expected} increments, got ${data.actual_increment}. NO LOST INCREMENTS!`
+            : `⚠️ Unexpected result: Expected ${data.total_expected}, got ${data.actual_increment}`;
+        
+        showMessage(message, success ? 'success' : 'error');
+        
+        // Add results to timeline
+        const timeline = document.getElementById('operationsTimeline');
+        const resultDiv = document.createElement('div');
+        resultDiv.style.cssText = `padding: 15px; background: ${success ? '#f0fdf4' : '#fef2f2'}; border: 2px solid ${success ? '#22c55e' : '#ef4444'}; margin-bottom: 10px; border-radius: 8px; font-weight: bold;`;
+        resultDiv.innerHTML = `
+            <div style="color: ${success ? '#16a34a' : '#dc2626'}; font-size: 16px; margin-bottom: 8px;">
+                ${success ? '🎉' : '⚠️'} Mass CRDT Test Results
+            </div>
+            <div style="font-size: 14px; color: #6b7280;">
+                <div>Operations: ${data.num_operations} concurrent</div>
+                <div>Increments happened: ${data.increments_happened}</div>
+                <div>Final result: ${data.final_result}</div>
+                <div>Success rate: ${data.operations.filter(op => op.success).length}/${data.operations.length}</div>
+                <div>Execution time: ${data.execution_time.toFixed(2)}s</div>
+                ${success ? '<div style="color: #16a34a; margin-top: 8px;">✅ CRDT Guarantee Verified: All increments preserved!</div>' : ''}
+            </div>
+        `;
+        
+        if (timeline.children.length === 1 && timeline.children[0].textContent.includes('CRDT operations will appear')) {
+            timeline.innerHTML = '';
+        }
+        timeline.insertBefore(resultDiv, timeline.firstChild);
+        
+        // Update displays
+        setTimeout(() => {
+            loadCurrentCounterValue();
+            loadCounterConsistency();
+        }, 1000);
+    });
+</script>
+
+<style>
+.node-card {
+    transition: all 0.3s ease;
+}
+
+.node-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#operationsTimeline::-webkit-scrollbar {
+    width: 6px;
+}
+
+#operationsTimeline::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+#operationsTimeline::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+</style>
+{% endblock %}

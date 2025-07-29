@@ -16,6 +16,9 @@ A production-ready distributed key-value database implementation with advanced f
 ### Professional Features
 - **Health Monitoring**: Built-in health checks and real-time monitoring
 - **Live Dashboard**: Web-based dashboard for cluster visualization and operations
+- **Hash Ring Analysis**: Comprehensive APIs for virtual node details, key distribution, and migration analysis
+- **Cluster Management**: Dynamic node addition/removal with process management
+
 - **Kubernetes Ready**: Full Kubernetes deployment with StatefulSets and services
 - **Docker Support**: Containerized deployment with health checks
 - **Professional Logging**: Structured logging with centralized log management
@@ -233,6 +236,11 @@ Comprehensive guides are available in the `md-files/` directory:
 - [Kubernetes Testing Guide](md-files/KUBERNETES_TESTING_GUIDE.md)
 - [Unified Demo Runner Guide](md-files/UNIFIED_DEMO_RUNNER_GUIDE.md)
 - [Verification Scripts Guide](md-files/VERIFICATION_SCRIPTS.md)
+- [CRDT Counters](md-files/CRDT_COUNTERS.md)
+- [Hash Ring APIs](md-files/HASH_RING_APIS.md)
+- [Hash Ring APIs - Quick Reference](md-files/HASH_RING_API_QUICK_REFERENCE.md)
+- [Cluster Management APIs](md-files/CLUSTER_MANAGEMENT_APIS.md)
+
 
 ## 🛠️ Development
 
@@ -278,7 +286,7 @@ python demo/cluster_demo_runner_local.py replication --use-existing
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. 
 
 ## 🏗️ Architecture Overview
 

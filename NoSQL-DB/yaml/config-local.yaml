@@ -45,6 +45,11 @@ cluster:
       monitoring_port: 55403         # http_port + 400
   
   replication_factor: 3
+  
+  # Quorum configuration
+  quorum:
+    read_quorum: 2
+    write_quorum: 2
 
 # Consistency Settings
 consistency:

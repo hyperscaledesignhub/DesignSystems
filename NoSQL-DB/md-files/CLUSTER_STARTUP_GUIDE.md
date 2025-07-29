@@ -82,4 +82,4 @@ chmod +x start-cluster-local.sh start-cluster-k8s.sh
 ### If Kubernetes pods aren't starting:
 ```bash
 ./start-cluster-k8s.sh logs
-``` 
+```
