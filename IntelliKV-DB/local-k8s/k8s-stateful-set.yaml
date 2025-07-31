@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: distributed-database
+  namespace: distributed-db
+  labels:
+    app: distributed-database
+spec:
+  serviceName: db-headless-service
+  replicas: 3
+  selector:
+    matchLabels:
+      app: distributed-database
+  template:
+    metadata:
+      labels:
+        app: distributed-database
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+      - name: database
+        image: distributed-database:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: api
+        - containerPort: 9080
+          name: internal
+        env:
+        - name: NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: DATA_DIR
+          value: "/data"
+        - name: SEED_NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "8080"
+        - name: REPLICATION_FACTOR
+          value: "3"
+        envFrom:
+        - configMapRef:
+            name: db-config
+        volumeMounts:
+        - name: data-volume
+          mountPath: /data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - distributed/health.py
+            - health
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - distributed/health.py
+            - readiness
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          exec:
+            command:
+            - python
+            - distributed/health.py
+            - startup
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 30  # Allow up to 150 seconds for startup with peer discovery
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+      initContainers:
+      - name: init-data
+        image: busybox:1.35
+        command: ['sh', '-c', 'mkdir -p /data && chown -R 1000:1000 /data']
+        volumeMounts:
+        - name: data-volume
+          mountPath: /data
+        securityContext:
+          runAsUser: 0  # Run as root to set permissions
+  volumeClaimTemplates:
+  - metadata:
+      name: data-volume
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: standard  # Use default storage class
