@@ -1,12 +1,12 @@
-# NoSQL-DB Real-World Demos
+# Intelli KV DB Real-World Demos
 
-This directory contains demonstrations of distributed database concepts mapped to real-world use cases. Each demo showcases specific features of the NoSQL-DB system with practical applications.
+This directory contains demonstrations of distributed NoSQL database concepts mapped to real-world use cases. Each demo showcases specific features of the Intelli KV DB system with practical applications.
 
 ## 🎯 Quick Start
 
 ### Prerequisites
 - Python 3.8+
-- Running NoSQL-DB cluster (3 nodes recommended)
+- Running Intelli KV DB cluster (3 nodes recommended)
 - Required Python packages: `requests`, `pyyaml`
 
 ### Running a Demo

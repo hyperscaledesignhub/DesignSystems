@@ -1,8 +1,8 @@
-# Distributed Key-Value Database
+# Intelli KV DB
 
-A production-ready distributed key-value database implementation with advanced features including replication, anti-entropy synchronization, causal consistency, vector clocks, and comprehensive monitoring.
+A production-ready distributed NoSQL key-value database implementation with advanced features including replication, anti-entropy synchronization, causal consistency, vector clocks, and comprehensive monitoring.
 
-![Distributed Key-Value Database Architecture](images/keyvaluedb.png)
+![Intelli KV DB Architecture](images/keyvaluedb.png)
 
 ## 🚀 Features
 
@@ -81,7 +81,7 @@ A production-ready distributed key-value database implementation with advanced f
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd NoSQL-DB
+cd IntelliKV-DB
 
 # Install dependencies
 pip install -r requirements.txt
