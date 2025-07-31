@@ -1,0 +1,660 @@
+{% extends "base.html" %}
+
+{% block title %}Collaborative Editor Demo - Distributed Database{% endblock %}
+{% block demo_type %}collab_editor{% endblock %}
+
+{% block header_title %}📝 Collaborative Document Editor{% endblock %}
+{% block header_subtitle %}Real-time document editing with causal consistency and conflict resolution{% endblock %}
+
+{% block content %}
+<!-- Document Creation -->
+<div class="card">
+    <h3>📄 Create New Document</h3>
+    <div class="form-group">
+        <label class="form-label">Document Title</label>
+        <input type="text" class="form-input" id="docTitle" value="Project Proposal - Distributed Systems" placeholder="Enter document title">
+    </div>
+    <button class="btn btn-primary" onclick="createDocument()">📝 Create Document</button>
+</div>
+
+<!-- Document Editor -->
+<div class="card" id="editorCard" style="display: none;">
+    <h3>✏️ Live Document Editor <span class="live-indicator">LIVE</span></h3>
+    
+    <!-- User Selection -->
+    <div style="margin-bottom: 20px;">
+        <label class="form-label">Edit as:</label>
+        <select id="currentUser" class="form-input" style="width: auto; display: inline-block; margin-left: 10px;">
+            <option value="Alice">👩‍💼 Alice (Product Manager)</option>
+            <option value="Bob">👨‍💻 Bob (Engineer)</option>
+            <option value="Charlie">👨‍🎨 Charlie (Designer)</option>
+        </select>
+        <span id="userIndicator" style="margin-left: 10px; padding: 4px 8px; background: #3b82f6; color: white; border-radius: 12px; font-size: 12px;">Alice editing</span>
+    </div>
+    
+    <!-- Document Display -->
+    <div id="documentDisplay" style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+        <h4 id="documentTitle" style="margin-bottom: 20px; color: #1f2937;">Document Loading...</h4>
+        <div id="paragraphsContainer">
+            <!-- Paragraphs will be inserted here -->
+        </div>
+    </div>
+    
+    <!-- Paragraph Editor -->
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb;">
+        <h4>✏️ Edit Paragraph</h4>
+        <div class="form-group">
+            <label class="form-label">Paragraph ID</label>
+            <select id="paragraphSelect" class="form-input">
+                <option value="para_1">Introduction</option>
+                <option value="para_2">Implementation Plan</option>
+                <option value="para_3">Budget & Timeline</option>
+                <option value="para_4">Risk Assessment</option>
+                <option value="para_5">Conclusion</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Content</label>
+            <textarea id="paragraphContent" class="form-input form-textarea" placeholder="Enter paragraph content..."></textarea>
+        </div>
+        <button class="btn btn-secondary" onclick="editParagraph()">💾 Save Changes</button>
+        <button class="btn btn-warning" onclick="createConflict()" style="margin-left: 10px;">⚠️ Create Conflict</button>
+    </div>
+</div>
+
+<!-- Vector Clocks & Causality -->
+<div class="card" id="vectorClockCard" style="display: none;">
+    <h3>🕐 Vector Clocks & Causal Consistency</h3>
+    <div class="node-grid" id="vectorClockDisplay">
+        <!-- Vector clock info will be displayed here -->
+    </div>
+</div>
+
+<!-- Conflict Detection -->
+<div class="card" id="conflictCard" style="display: none;">
+    <h3>⚠️ Conflict Detection & Resolution</h3>
+    <div id="conflictDisplay">
+        <div style="text-align: center; color: #6b7280; padding: 40px;">
+            No conflicts detected. All edits are consistent! ✅
+        </div>
+    </div>
+</div>
+
+<!-- Node Status & Replication -->
+<div class="card" id="replicationCard" style="display: none;">
+    <h3>🔄 Document Replication Status</h3>
+    <div class="node-grid" id="documentNodeStats">
+        <!-- Node replication status will be displayed here -->
+    </div>
+</div>
+
+<!-- Active Editors -->
+<div class="card" id="editorsCard" style="display: none;">
+    <h3>👥 Active Editors</h3>
+    <div id="activeEditors" style="display: flex; gap: 15px; flex-wrap: wrap;">
+        <div class="editor-avatar" data-user="Alice">
+            <div style="width: 48px; height: 48px; background: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">A</div>
+            <div style="text-align: center; margin-top: 5px; font-size: 12px;">Alice</div>
+            <div style="text-align: center; font-size: 10px; color: #6b7280;">Node-1</div>
+        </div>
+        <div class="editor-avatar" data-user="Bob">
+            <div style="width: 48px; height: 48px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">B</div>
+            <div style="text-align: center; margin-top: 5px; font-size: 12px;">Bob</div>
+            <div style="text-align: center; font-size: 10px; color: #6b7280;">Node-2</div>
+        </div>
+        <div class="editor-avatar" data-user="Charlie">
+            <div style="width: 48px; height: 48px; background: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">C</div>
+            <div style="text-align: center; margin-top: 5px; font-size: 12px;">Charlie</div>
+            <div style="text-align: center; font-size: 10px; color: #6b7280;">Node-3</div>
+        </div>
+    </div>
+</div>
+
+<!-- Demo Controls -->
+<div class="card">
+    <h3>🎮 Demo Controls</h3>
+    <div style="text-align: center;">
+        <button class="btn btn-primary" onclick="simulateMultiUserEditing()" style="margin: 5px;">
+            👥 Simulate Multi-User Editing
+        </button>
+        <button class="btn btn-warning" onclick="simulateNodeFailure()" style="margin: 5px;">
+            🚨 Simulate Node Failure
+        </button>
+        <button class="btn btn-secondary" onclick="triggerAntiEntropy()" style="margin: 5px;">
+            🔄 Trigger Anti-Entropy
+        </button>
+        <button class="btn btn-danger" onclick="resetDocument()" style="margin: 5px;">
+            🔄 Reset Document
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentDocumentId = null;
+    let documentUpdateInterval = null;
+    let activeConflicts = [];
+    let userColors = {
+        'Alice': '#3b82f6',
+        'Bob': '#10b981', 
+        'Charlie': '#f59e0b'
+    };
+
+    function createDocument() {
+        const title = document.getElementById('docTitle').value || 'Untitled Document';
+        
+        showMessage('Creating document...', 'info');
+        
+        fetch('/api/collab/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: title
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentDocumentId = data.doc_id;
+                showEditorCards();
+                initializeDocument(data.data);
+                startDocumentUpdates();
+                showMessage('Document created successfully! 📝');
+            } else {
+                showMessage('Failed to create document: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('Error creating document: ' + error.message, 'error');
+        });
+    }
+    
+    function showEditorCards() {
+        document.getElementById('editorCard').style.display = 'block';
+        document.getElementById('vectorClockCard').style.display = 'block';
+        document.getElementById('conflictCard').style.display = 'block';
+        document.getElementById('replicationCard').style.display = 'block';
+        document.getElementById('editorsCard').style.display = 'block';
+    }
+    
+    function initializeDocument(docData) {
+        document.getElementById('documentTitle').textContent = docData.title;
+        updateDocumentDisplay(docData);
+    }
+    
+    function updateDocumentDisplay(docData) {
+        const container = document.getElementById('paragraphsContainer');
+        container.innerHTML = '';
+        
+        const paragraphs = docData.paragraphs || {};
+        const paragraphIds = ['para_1', 'para_2', 'para_3', 'para_4', 'para_5'];
+        
+        paragraphIds.forEach(paraId => {
+            const para = paragraphs[paraId];
+            const paraDiv = document.createElement('div');
+            paraDiv.style.marginBottom = '20px';
+            paraDiv.style.padding = '15px';
+            paraDiv.style.border = '1px solid #e5e7eb';
+            paraDiv.style.borderRadius = '8px';
+            paraDiv.style.background = '#fafafa';
+            
+            if (para) {
+                const userColor = userColors[para.author] || '#6b7280';
+                paraDiv.innerHTML = `
+                    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 10px;">
+                        <h5 style="margin: 0; color: #1f2937;">${getParagraphTitle(paraId)}</h5>
+                        <div style="font-size: 12px; color: ${userColor}; font-weight: 600;">
+                            ✏️ ${para.author} • ${timeAgo(para.timestamp)}
+                        </div>
+                    </div>
+                    <div style="line-height: 1.6; color: #374151;">
+                        ${para.content || '<em style="color: #9ca3af;">No content yet...</em>'}
+                    </div>
+                `;
+            } else {
+                paraDiv.innerHTML = `
+                    <h5 style="margin: 0 0 10px 0; color: #1f2937;">${getParagraphTitle(paraId)}</h5>
+                    <div style="line-height: 1.6; color: #9ca3af; font-style: italic;">
+                        No content yet...
+                    </div>
+                `;
+            }
+            
+            container.appendChild(paraDiv);
+        });
+    }
+    
+    function getParagraphTitle(paraId) {
+        const titles = {
+            'para_1': '1. Introduction',
+            'para_2': '2. Implementation Plan', 
+            'para_3': '3. Budget & Timeline',
+            'para_4': '4. Risk Assessment',
+            'para_5': '5. Conclusion'
+        };
+        return titles[paraId] || paraId;
+    }
+    
+    function editParagraph() {
+        if (!currentDocumentId) {
+            showMessage('Please create a document first!', 'error');
+            return;
+        }
+        
+        const paraId = document.getElementById('paragraphSelect').value;
+        const content = document.getElementById('paragraphContent').value;
+        const author = document.getElementById('currentUser').value;
+        
+        if (!content.trim()) {
+            showMessage('Please enter some content!', 'error');
+            return;
+        }
+        
+        showMessage(`${author} is editing ${getParagraphTitle(paraId)}...`, 'info');
+        
+        fetch('/api/collab/edit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                doc_id: currentDocumentId,
+                para_id: paraId,
+                content: content,
+                author: author
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateDocumentDisplay(data.document);
+                document.getElementById('paragraphContent').value = '';
+                showMessage(`✅ ${author} saved changes to ${getParagraphTitle(paraId)}`);
+                loadDocumentStatus();
+            } else {
+                showMessage('Failed to save changes: ' + data.error, 'error');
+            }
+        })
+        .catch(error => {
+            showMessage('Error saving changes: ' + error.message, 'error');
+        });
+    }
+    
+    function createConflict() {
+        if (!currentDocumentId) {
+            showMessage('Please create a document first!', 'error');
+            return;
+        }
+        
+        showMessage('🔥 Creating conflict scenario...', 'warning');
+        
+        const paraId = 'para_3'; // Budget paragraph
+        
+        // Alice's edit
+        setTimeout(() => {
+            fetch('/api/collab/edit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    doc_id: currentDocumentId,
+                    para_id: paraId,
+                    content: 'Budget: $50,000 (cost-optimized approach with focus on essential features)',
+                    author: 'Alice'
+                })
+            });
+        }, 100);
+        
+        // Bob's conflicting edit
+        setTimeout(() => {
+            fetch('/api/collab/edit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    doc_id: currentDocumentId,
+                    para_id: paraId,
+                    content: 'Budget: $75,000 (premium implementation with advanced features and analytics)',
+                    author: 'Bob'
+                })
+            });
+            
+            showMessage('⚠️ Conflict created! Alice and Bob edited the same paragraph simultaneously.', 'warning');
+            
+            // Simulate conflict detection after short delay
+            setTimeout(() => {
+                displayConflict(paraId, 'Alice', 'Bob');
+            }, 2000);
+        }, 500);
+    }
+    
+    function displayConflict(paraId, user1, user2) {
+        const conflictDisplay = document.getElementById('conflictDisplay');
+        conflictDisplay.innerHTML = `
+            <div style="border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; background: #fefbf0;">
+                <h4 style="color: #d97706; margin-bottom: 15px;">⚠️ Conflict Detected in ${getParagraphTitle(paraId)}</h4>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid ${userColors[user1]};">
+                        <h5 style="color: ${userColors[user1]}; margin-bottom: 10px;">👩‍💼 ${user1}'s Version</h5>
+                        <div style="font-size: 14px; line-height: 1.5;">
+                            Budget: $50,000 (cost-optimized approach with focus on essential features)
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button class="btn btn-secondary" onclick="resolveConflict('${paraId}', '${user1}')" style="font-size: 12px; padding: 6px 12px;">
+                                Use This Version
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid ${userColors[user2]};">
+                        <h5 style="color: ${userColors[user2]}; margin-bottom: 10px;">👨‍💻 ${user2}'s Version</h5>
+                        <div style="font-size: 14px; line-height: 1.5;">
+                            Budget: $75,000 (premium implementation with advanced features and analytics)
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button class="btn btn-secondary" onclick="resolveConflict('${paraId}', '${user2}')" style="font-size: 12px; padding: 6px 12px;">
+                                Use This Version
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 15px;">
+                    <button class="btn btn-warning" onclick="mergeConflict('${paraId}')" style="margin: 5px;">
+                        🔄 Auto-Merge
+                    </button>
+                    <button class="btn btn-primary" onclick="manualResolve('${paraId}')" style="margin: 5px;">
+                        ✏️ Manual Resolution
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    function resolveConflict(paraId, winner) {
+        const winnerContent = winner === 'Alice' ? 
+            'Budget: $50,000 (cost-optimized approach with focus on essential features)' :
+            'Budget: $75,000 (premium implementation with advanced features and analytics)';
+        
+        fetch('/api/collab/edit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                doc_id: currentDocumentId,
+                para_id: paraId,
+                content: winnerContent,
+                author: `${winner} (conflict resolution)`
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('conflictDisplay').innerHTML = `
+                    <div style="text-align: center; color: #22c55e; padding: 40px;">
+                        ✅ Conflict resolved! ${winner}'s version was selected.
+                    </div>
+                `;
+                updateDocumentDisplay(data.document);
+                showMessage(`✅ Conflict resolved using ${winner}'s version`, 'success');
+            }
+        });
+    }
+    
+    function mergeConflict(paraId) {
+        const mergedContent = 'Budget: $62,500 (balanced approach combining cost optimization with key premium features)';
+        
+        fetch('/api/collab/edit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                doc_id: currentDocumentId,
+                para_id: paraId,
+                content: mergedContent,
+                author: 'System (auto-merge)'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('conflictDisplay').innerHTML = `
+                    <div style="text-align: center; color: #22c55e; padding: 40px;">
+                        ✅ Conflict auto-merged! Combined both perspectives into a balanced solution.
+                    </div>
+                `;
+                updateDocumentDisplay(data.document);
+                showMessage('🔄 Conflict auto-merged successfully!', 'success');
+            }
+        });
+    }
+    
+    function loadDocumentStatus() {
+        if (!currentDocumentId) return;
+        
+        fetch(`/api/collab/document/${currentDocumentId}`)
+            .then(response => response.json())
+            .then(data => {
+                updateVectorClockDisplay(data);
+                updateDocumentNodeStats(data);
+            })
+            .catch(error => {
+                console.error('Error loading document status:', error);
+            });
+    }
+    
+    function updateVectorClockDisplay(data) {
+        const container = document.getElementById('vectorClockDisplay');
+        container.innerHTML = '';
+        
+        Object.keys(data).forEach(nodeKey => {
+            const node = data[nodeKey];
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'node-card';
+            
+            const vectorClock = node.vector_clock || {};
+            const clockEntries = Object.entries(vectorClock).map(([nodeId, count]) => 
+                `${nodeId}: ${count}`
+            ).join(', ') || 'No clock data';
+            
+            nodeDiv.innerHTML = `
+                <h4>${nodeKey.toUpperCase()}</h4>
+                <div style="color: #6b7280; font-size: 12px; margin-bottom: 10px;">${node.address}</div>
+                <div style="font-size: 14px; margin-bottom: 8px;">
+                    <strong>Vector Clock:</strong>
+                </div>
+                <div style="font-family: monospace; font-size: 12px; background: #f1f5f9; padding: 8px; border-radius: 4px;">
+                    {${clockEntries}}
+                </div>
+                <div style="margin-top: 10px; font-size: 12px;">
+                    Status: ${node.status === 'healthy' ? '✅ Healthy' : '⚠️ Syncing'}
+                </div>
+            `;
+            
+            container.appendChild(nodeDiv);
+        });
+    }
+    
+    function updateDocumentNodeStats(data) {
+        const container = document.getElementById('documentNodeStats');
+        container.innerHTML = '';
+        
+        Object.keys(data).forEach(nodeKey => {
+            const node = data[nodeKey];
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = `node-card ${node.status !== 'healthy' ? 'syncing' : ''}`;
+            
+            const document = node.document || {};
+            const paragraphCount = Object.keys(document.paragraphs || {}).length;
+            const version = document.version || 0;
+            
+            nodeDiv.innerHTML = `
+                <h4>${nodeKey.toUpperCase()}</h4>
+                <div style="color: #6b7280; font-size: 12px; margin-bottom: 10px;">${node.address}</div>
+                <div style="font-size: 14px;">
+                    <div>📄 Paragraphs: ${paragraphCount}</div>
+                    <div>🔢 Version: ${version}</div>
+                    <div>📊 Status: ${node.status === 'healthy' ? '✅ Synced' : '⏳ Syncing'}</div>
+                </div>
+            `;
+            
+            container.appendChild(nodeDiv);
+        });
+    }
+    
+    function simulateMultiUserEditing() {
+        showMessage('👥 Simulating multi-user editing scenario...', 'info');
+        
+        const edits = [
+            { user: 'Alice', para: 'para_1', content: 'This project aims to revolutionize distributed systems with cutting-edge technology and innovative approaches.' },
+            { user: 'Bob', para: 'para_2', content: 'Implementation will use microservices architecture with Kubernetes orchestration and real-time monitoring.' },
+            { user: 'Charlie', para: 'para_4', content: 'Risk assessment shows low probability of major issues with proper planning and experienced team leadership.' }
+        ];
+        
+        edits.forEach((edit, index) => {
+            setTimeout(() => {
+                fetch('/api/collab/edit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        doc_id: currentDocumentId,
+                        para_id: edit.para,
+                        content: edit.content,
+                        author: edit.user
+                    })
+                });
+                
+                showMessage(`${edit.user} edited ${getParagraphTitle(edit.para)}`, 'info');
+                
+                if (index === edits.length - 1) {
+                    setTimeout(() => {
+                        showMessage('✅ Multi-user editing simulation complete!', 'success');
+                        loadDocumentStatus();
+                    }, 1000);
+                }
+            }, index * 2000);
+        });
+    }
+    
+    function simulateNodeFailure() {
+        showMessage('🚨 Simulating Node-3 failure...', 'warning');
+        
+        // Simulate node becoming unavailable
+        setTimeout(() => {
+            const nodeCards = document.querySelectorAll('#documentNodeStats .node-card');
+            if (nodeCards.length > 2) {
+                nodeCards[2].classList.add('syncing');
+                nodeCards[2].innerHTML += '<div style="margin-top: 8px; font-size: 12px; color: #ef4444;">❌ Node failed</div>';
+            }
+            
+            showMessage('Node-3 is down. Document still accessible via other nodes!', 'warning');
+            
+            // Simulate recovery
+            setTimeout(() => {
+                nodeCards[2].classList.remove('syncing');
+                showMessage('✅ Node-3 recovered! Anti-entropy restored consistency.', 'success');
+                loadDocumentStatus();
+            }, 8000);
+        }, 1000);
+    }
+    
+    function triggerAntiEntropy() {
+        showMessage('🔄 Triggering anti-entropy synchronization...', 'info');
+        loadDocumentStatus();
+        
+        setTimeout(() => {
+            showMessage('✅ Anti-entropy sync complete! All nodes consistent.', 'success');
+        }, 2000);
+    }
+    
+    function resetDocument() {
+        if (confirm('Reset the document? This will clear all content.')) {
+            currentDocumentId = null;
+            if (documentUpdateInterval) clearInterval(documentUpdateInterval);
+            
+            document.getElementById('editorCard').style.display = 'none';
+            document.getElementById('vectorClockCard').style.display = 'none';
+            document.getElementById('conflictCard').style.display = 'none';
+            document.getElementById('replicationCard').style.display = 'none';
+            document.getElementById('editorsCard').style.display = 'none';
+            
+            document.getElementById('docTitle').value = 'Project Proposal - Distributed Systems';
+            document.getElementById('paragraphContent').value = '';
+            
+            showMessage('Document reset successfully! 🔄', 'success');
+        }
+    }
+    
+    function startDocumentUpdates() {
+        if (documentUpdateInterval) clearInterval(documentUpdateInterval);
+        
+        documentUpdateInterval = setInterval(() => {
+            if (currentDocumentId) {
+                loadDocumentStatus();
+            }
+        }, 5000);
+    }
+    
+    // Event handlers
+    document.getElementById('currentUser').addEventListener('change', function() {
+        const user = this.value;
+        const indicator = document.getElementById('userIndicator');
+        indicator.textContent = `${user} editing`;
+        indicator.style.background = userColors[user];
+        
+        // Update active editor highlight
+        document.querySelectorAll('.editor-avatar').forEach(avatar => {
+            avatar.style.opacity = avatar.dataset.user === user ? '1' : '0.5';
+        });
+    });
+    
+    document.getElementById('paragraphSelect').addEventListener('change', function() {
+        const paraId = this.value;
+        if (currentDocumentId) {
+            // Load existing content for editing
+            fetch(`/api/collab/document/${currentDocumentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const healthyNode = Object.values(data).find(node => node.status === 'healthy');
+                    if (healthyNode && healthyNode.document && healthyNode.document.paragraphs) {
+                        const para = healthyNode.document.paragraphs[paraId];
+                        document.getElementById('paragraphContent').value = para ? para.content : '';
+                    }
+                });
+        }
+    });
+    
+    // Socket event handlers
+    socket.on('document_updated', function(data) {
+        if (data.doc_id === currentDocumentId) {
+            showMessage(`${data.author} updated ${getParagraphTitle(data.para_id)}`, 'info');
+            loadDocumentStatus();
+        }
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📝 Collaborative editor demo initialized');
+        
+        // Set initial user
+        document.getElementById('currentUser').dispatchEvent(new Event('change'));
+    });
+</script>
+
+<style>
+.editor-avatar {
+    text-align: center;
+    transition: opacity 0.3s ease;
+}
+
+.node-card.syncing {
+    border-left-color: #f59e0b;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+</style>
+{% endblock %}

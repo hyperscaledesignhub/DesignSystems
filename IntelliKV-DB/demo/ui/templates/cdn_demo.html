@@ -1,0 +1,594 @@
+{% extends "base.html" %}
+
+{% block title %}CDN Distribution Demo - Distributed Database{% endblock %}
+{% block demo_type %}cdn{% endblock %}
+
+{% block header_title %}🌐 Global CDN Distribution{% endblock %}
+{% block header_subtitle %}Consistent hashing for content distribution across edge servers{% endblock %}
+
+{% block content %}
+<!-- Hash Ring Visualization -->
+<div class="card">
+    <h3>🎯 Hash Ring Visualization</h3>
+    <div id="hashRingContainer" style="text-align: center; padding: 40px;">
+        <svg id="hashRing" width="400" height="400" style="border: 1px solid #e5e7eb; border-radius: 8px;">
+            <!-- Hash ring will be drawn here -->
+        </svg>
+    </div>
+    <div style="text-align: center; margin-top: 20px;">
+        <button class="btn btn-primary" onclick="initializeHashRing()">🔄 Initialize Ring</button>
+        <button class="btn btn-secondary" onclick="addNode()" style="margin-left: 10px;">➕ Add Node</button>
+        <button class="btn btn-warning" onclick="removeNode()" style="margin-left: 10px;">➖ Remove Node</button>
+    </div>
+</div>
+
+<!-- Content Upload -->
+<div class="card">
+    <h3>📤 Upload Content</h3>
+    <div class="form-group">
+        <label class="form-label">Content Name</label>
+        <input type="text" class="form-input" id="contentName" placeholder="e.g., video_4k_movie.mp4">
+    </div>
+    <div class="form-group">
+        <label class="form-label">Content Size (MB)</label>
+        <input type="number" class="form-input" id="contentSize" value="500" min="1" max="10000">
+    </div>
+    <div class="form-group">
+        <label class="form-label">Content Type</label>
+        <select class="form-input" id="contentType">
+            <option value="video">🎬 Video</option>
+            <option value="image">🖼️ Image</option>
+            <option value="document">📄 Document</option>
+            <option value="software">💿 Software</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" onclick="uploadContent()">🚀 Upload Content</button>
+</div>
+
+<!-- Content Distribution Status -->
+<div class="card" id="distributionCard" style="display: none;">
+    <h3>📊 Content Distribution Status</h3>
+    <div id="contentList">
+        <!-- Content items will be listed here -->
+    </div>
+</div>
+
+<!-- Load Balancing Stats -->
+<div class="card" id="loadBalanceCard" style="display: none;">
+    <h3>⚖️ Load Balancing Statistics</h3>
+    <div class="stats-grid" id="loadStats">
+        <div class="stat-card">
+            <div class="stat-value" id="totalContent">0</div>
+            <div class="stat-label">Total Content</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="totalSize">0 GB</div>
+            <div class="stat-label">Total Size</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="avgLatency">0ms</div>
+            <div class="stat-label">Avg Latency</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="hitRatio">0%</div>
+            <div class="stat-label">Cache Hit Ratio</div>
+        </div>
+    </div>
+</div>
+
+<!-- Node Load Distribution -->
+<div class="card" id="nodeLoadCard" style="display: none;">
+    <h3>🏗️ Node Load Distribution</h3>
+    <div class="node-grid" id="nodeLoads">
+        <!-- Node load information will be displayed here -->
+    </div>
+</div>
+
+<!-- Geographic Distribution Map -->
+<div class="card">
+    <h3>🗺️ Geographic Distribution</h3>
+    <div style="background: #f8fafc; border-radius: 8px; padding: 30px; text-align: center;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 600px; margin: 0 auto;">
+            <div class="geo-node" data-location="us-east">
+                <div style="width: 60px; height: 60px; background: #3b82f6; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">US-E</div>
+                <div style="font-weight: 600;">US East</div>
+                <div style="font-size: 12px; color: #6b7280;">N. Virginia</div>
+                <div class="node-load" style="margin-top: 5px; font-size: 12px;">0 items</div>
+            </div>
+            <div class="geo-node" data-location="eu-west">
+                <div style="width: 60px; height: 60px; background: #10b981; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">EU-W</div>
+                <div style="font-weight: 600;">EU West</div>
+                <div style="font-size: 12px; color: #6b7280;">Ireland</div>
+                <div class="node-load" style="margin-top: 5px; font-size: 12px;">0 items</div>
+            </div>
+            <div class="geo-node" data-location="asia-pacific">
+                <div style="width: 60px; height: 60px; background: #f59e0b; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">AP</div>
+                <div style="font-weight: 600;">Asia Pacific</div>
+                <div style="font-size: 12px; color: #6b7280;">Singapore</div>
+                <div class="node-load" style="margin-top: 5px; font-size: 12px;">0 items</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Demo Controls -->
+<div class="card">
+    <h3>🎮 Demo Controls</h3>
+    <div style="text-align: center;">
+        <button class="btn btn-primary" onclick="simulateTraffic()" style="margin: 5px;">
+            🚦 Simulate Traffic
+        </button>
+        <button class="btn btn-secondary" onclick="rebalanceRing()" style="margin: 5px;">
+            ⚖️ Rebalance Ring
+        </button>
+        <button class="btn btn-warning" onclick="simulateNodeFailure()" style="margin: 5px;">
+            🚨 Simulate Node Failure
+        </button>
+        <button class="btn btn-danger" onclick="resetCDN()" style="margin: 5px;">
+            🔄 Reset CDN
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+    let hashRingData = [];
+    let contentItems = [];
+    let nodeLocations = ['us-east', 'eu-west', 'asia-pacific'];
+    let nodeColors = ['#3b82f6', '#10b981', '#f59e0b'];
+    
+    function initializeHashRing() {
+        hashRingData = [
+            { id: 'node-1', location: 'us-east', angle: 0, load: 0, color: '#3b82f6' },
+            { id: 'node-2', location: 'eu-west', angle: 120, load: 0, color: '#10b981' },
+            { id: 'node-3', location: 'asia-pacific', angle: 240, load: 0, color: '#f59e0b' }
+        ];
+        
+        drawHashRing();
+        showMessage('Hash ring initialized with 3 nodes! 🎯', 'success');
+        showCDNCards();
+    }
+    
+    function drawHashRing() {
+        const svg = d3.select('#hashRing');
+        svg.selectAll('*').remove();
+        
+        const width = 400;
+        const height = 400;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = 150;
+        
+        // Draw ring
+        svg.append('circle')
+            .attr('cx', centerX)
+            .attr('cy', centerY)
+            .attr('r', radius)
+            .attr('fill', 'none')
+            .attr('stroke', '#e5e7eb')
+            .attr('stroke-width', 3);
+        
+        // Draw nodes
+        hashRingData.forEach(node => {
+            const angleRad = (node.angle * Math.PI) / 180;
+            const x = centerX + radius * Math.cos(angleRad - Math.PI / 2);
+            const y = centerY + radius * Math.sin(angleRad - Math.PI / 2);
+            
+            // Node circle
+            svg.append('circle')
+                .attr('cx', x)
+                .attr('cy', y)
+                .attr('r', 20)
+                .attr('fill', node.color)
+                .attr('stroke', 'white')
+                .attr('stroke-width', 3);
+            
+            // Node label
+            svg.append('text')
+                .attr('x', x)
+                .attr('y', y + 5)
+                .attr('text-anchor', 'middle')
+                .attr('fill', 'white')
+                .attr('font-weight', 'bold')
+                .attr('font-size', '12px')
+                .text(node.id.split('-')[1]);
+            
+            // Load indicator
+            svg.append('text')
+                .attr('x', x)
+                .attr('y', y + 35)
+                .attr('text-anchor', 'middle')
+                .attr('fill', node.color)
+                .attr('font-size', '10px')
+                .attr('font-weight', 'bold')
+                .text(`${node.load} items`);
+        });
+        
+        // Draw content items
+        contentItems.forEach((item, index) => {
+            const node = getResponsibleNode(item.name);
+            const nodeData = hashRingData.find(n => n.id === node);
+            if (nodeData) {
+                const angleRad = (nodeData.angle * Math.PI) / 180;
+                const itemRadius = radius - 30 - (index % 3) * 15;
+                const x = centerX + itemRadius * Math.cos(angleRad - Math.PI / 2);
+                const y = centerY + itemRadius * Math.sin(angleRad - Math.PI / 2);
+                
+                svg.append('circle')
+                    .attr('cx', x)
+                    .attr('cy', y)
+                    .attr('r', 4)
+                    .attr('fill', getContentTypeColor(item.type))
+                    .attr('opacity', 0.8)
+                    .append('title')
+                    .text(item.name);
+            }
+        });
+        
+        // Add legend
+        const legend = svg.append('g').attr('transform', 'translate(20, 20)');
+        const contentTypes = [
+            { type: 'video', color: '#ef4444', label: '🎬 Video' },
+            { type: 'image', color: '#8b5cf6', label: '🖼️ Image' },
+            { type: 'document', color: '#06b6d4', label: '📄 Document' },
+            { type: 'software', color: '#84cc16', label: '💿 Software' }
+        ];
+        
+        contentTypes.forEach((item, index) => {
+            legend.append('circle')
+                .attr('cx', 0)
+                .attr('cy', index * 20)
+                .attr('r', 4)
+                .attr('fill', item.color);
+            
+            legend.append('text')
+                .attr('x', 10)
+                .attr('y', index * 20 + 3)
+                .attr('font-size', '12px')
+                .text(item.label);
+        });
+    }
+    
+    function getContentTypeColor(type) {
+        const colors = {
+            'video': '#ef4444',
+            'image': '#8b5cf6', 
+            'document': '#06b6d4',
+            'software': '#84cc16'
+        };
+        return colors[type] || '#6b7280';
+    }
+    
+    function getResponsibleNode(contentName) {
+        // Simple hash function for demo
+        let hash = 0;
+        for (let i = 0; i < contentName.length; i++) {
+            hash = ((hash << 5) - hash + contentName.charCodeAt(i)) & 0xffffffff;
+        }
+        
+        const angle = Math.abs(hash) % 360;
+        
+        // Find the next node clockwise
+        const sortedNodes = [...hashRingData].sort((a, b) => a.angle - b.angle);
+        for (let node of sortedNodes) {
+            if (angle <= node.angle) {
+                return node.id;
+            }
+        }
+        return sortedNodes[0].id; // Wrap around
+    }
+    
+    function showCDNCards() {
+        document.getElementById('distributionCard').style.display = 'block';
+        document.getElementById('loadBalanceCard').style.display = 'block';
+        document.getElementById('nodeLoadCard').style.display = 'block';
+    }
+    
+    function uploadContent() {
+        const name = document.getElementById('contentName').value.trim();
+        const size = parseInt(document.getElementById('contentSize').value) || 100;
+        const type = document.getElementById('contentType').value;
+        
+        if (!name) {
+            showMessage('Please enter a content name!', 'error');
+            return;
+        }
+        
+        const responsibleNode = getResponsibleNode(name);
+        const nodeData = hashRingData.find(n => n.id === responsibleNode);
+        
+        if (nodeData) {
+            nodeData.load++;
+            
+            const contentItem = {
+                name: name,
+                size: size,
+                type: type,
+                node: responsibleNode,
+                location: nodeData.location,
+                timestamp: Date.now()
+            };
+            
+            contentItems.push(contentItem);
+            
+            updateContentList();
+            updateLoadStats();
+            updateNodeLoads();
+            drawHashRing();
+            
+            showMessage(`📤 Content "${name}" uploaded to ${responsibleNode} (${nodeData.location})!`, 'success');
+            
+            // Clear form
+            document.getElementById('contentName').value = '';
+            document.getElementById('contentSize').value = '500';
+        }
+    }
+    
+    function updateContentList() {
+        const container = document.getElementById('contentList');
+        container.innerHTML = '';
+        
+        if (contentItems.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: #6b7280; padding: 20px;">No content uploaded yet</div>';
+            return;
+        }
+        
+        contentItems.forEach(item => {
+            const typeIcon = {
+                'video': '🎬',
+                'image': '🖼️',
+                'document': '📄',
+                'software': '💿'
+            }[item.type] || '📁';
+            
+            const nodeData = hashRingData.find(n => n.id === item.node);
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = 'border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: white;';
+            
+            itemDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 600; color: #1f2937;">${typeIcon} ${item.name}</div>
+                        <div style="font-size: 14px; color: #6b7280; margin-top: 5px;">
+                            Size: ${item.size} MB • Type: ${item.type}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="padding: 4px 8px; background: ${nodeData?.color || '#6b7280'}; color: white; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                            ${item.node}
+                        </div>
+                        <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">
+                            ${item.location.replace('-', ' ').toUpperCase()}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(itemDiv);
+        });
+    }
+    
+    function updateLoadStats() {
+        const totalContent = contentItems.length;
+        const totalSize = contentItems.reduce((sum, item) => sum + item.size, 0);
+        const avgLatency = Math.floor(Math.random() * 50) + 20; // Simulated
+        const hitRatio = Math.min(100, Math.floor((totalContent / (totalContent + 10)) * 100)); // Simulated
+        
+        document.getElementById('totalContent').textContent = totalContent;
+        document.getElementById('totalSize').textContent = (totalSize / 1000).toFixed(1) + ' GB';
+        document.getElementById('avgLatency').textContent = avgLatency + 'ms';
+        document.getElementById('hitRatio').textContent = hitRatio + '%';
+    }
+    
+    function updateNodeLoads() {
+        const container = document.getElementById('nodeLoads');
+        container.innerHTML = '';
+        
+        hashRingData.forEach(node => {
+            const nodeItems = contentItems.filter(item => item.node === node.id);
+            const totalSize = nodeItems.reduce((sum, item) => sum + item.size, 0);
+            const utilization = Math.min(100, Math.floor((totalSize / 10000) * 100)); // Assuming 10GB max
+            
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'node-card';
+            nodeDiv.innerHTML = `
+                <h4 style="color: ${node.color};">${node.id.toUpperCase()}</h4>
+                <div style="color: #6b7280; font-size: 12px; margin-bottom: 10px;">${node.location.replace('-', ' ').toUpperCase()}</div>
+                <div style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                        <span>Utilization:</span>
+                        <span style="font-weight: 600;">${utilization}%</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; margin-top: 5px;">
+                        <div style="width: ${utilization}%; height: 100%; background: ${node.color}; border-radius: 4px;"></div>
+                    </div>
+                </div>
+                <div style="font-size: 14px;">
+                    <div>📦 Items: ${node.load}</div>
+                    <div>💾 Size: ${(totalSize / 1000).toFixed(1)} GB</div>
+                </div>
+            `;
+            
+            container.appendChild(nodeDiv);
+        });
+        
+        // Update geographic view
+        nodeLocations.forEach((location, index) => {
+            const node = hashRingData.find(n => n.location === location);
+            const geoNode = document.querySelector(`[data-location="${location}"] .node-load`);
+            if (geoNode && node) {
+                geoNode.textContent = `${node.load} items`;
+            }
+        });
+    }
+    
+    function addNode() {
+        const newNodeId = `node-${hashRingData.length + 1}`;
+        const newAngle = Math.floor(Math.random() * 360);
+        const newLocation = nodeLocations[Math.floor(Math.random() * nodeLocations.length)];
+        const newColor = nodeColors[hashRingData.length % nodeColors.length];
+        
+        hashRingData.push({
+            id: newNodeId,
+            location: newLocation,
+            angle: newAngle,
+            load: 0,
+            color: newColor
+        });
+        
+        // Redistribute some content
+        redistributeContent();
+        
+        drawHashRing();
+        updateNodeLoads();
+        showMessage(`➕ Added ${newNodeId} to the ring! Content redistributed.`, 'success');
+    }
+    
+    function removeNode() {
+        if (hashRingData.length <= 1) {
+            showMessage('Cannot remove the last node!', 'error');
+            return;
+        }
+        
+        const removedNode = hashRingData.pop();
+        
+        // Redistribute content from removed node
+        contentItems.forEach(item => {
+            if (item.node === removedNode.id) {
+                const newNode = getResponsibleNode(item.name);
+                item.node = newNode;
+                const nodeData = hashRingData.find(n => n.id === newNode);
+                if (nodeData) {
+                    nodeData.load++;
+                    item.location = nodeData.location;
+                }
+            }
+        });
+        
+        // Update loads
+        hashRingData.forEach(node => {
+            node.load = contentItems.filter(item => item.node === node.id).length;
+        });
+        
+        drawHashRing();
+        updateContentList();
+        updateNodeLoads();
+        showMessage(`➖ Removed ${removedNode.id}! Content redistributed to remaining nodes.`, 'warning');
+    }
+    
+    function redistributeContent() {
+        // Recalculate content distribution
+        hashRingData.forEach(node => node.load = 0);
+        
+        contentItems.forEach(item => {
+            const newNode = getResponsibleNode(item.name);
+            item.node = newNode;
+            const nodeData = hashRingData.find(n => n.id === newNode);
+            if (nodeData) {
+                nodeData.load++;
+                item.location = nodeData.location;
+            }
+        });
+    }
+    
+    function simulateTraffic() {
+        showMessage('🚦 Simulating high traffic...', 'info');
+        
+        const trafficSim = [
+            'popular_video.mp4',
+            'trending_image.jpg',
+            'viral_meme.gif',
+            'hot_song.mp3',
+            'news_article.pdf'
+        ];
+        
+        trafficSim.forEach((contentName, index) => {
+            setTimeout(() => {
+                const type = contentName.includes('.mp4') ? 'video' : 
+                           contentName.includes('.jpg') || contentName.includes('.gif') ? 'image' :
+                           contentName.includes('.pdf') ? 'document' : 'software';
+                
+                document.getElementById('contentName').value = contentName;
+                document.getElementById('contentType').value = type;
+                document.getElementById('contentSize').value = Math.floor(Math.random() * 1000) + 100;
+                uploadContent();
+            }, index * 1000);
+        });
+        
+        setTimeout(() => {
+            showMessage('✅ Traffic simulation complete!', 'success');
+        }, trafficSim.length * 1000);
+    }
+    
+    function rebalanceRing() {
+        showMessage('⚖️ Rebalancing hash ring...', 'info');
+        
+        // Redistribute angles for better balance
+        hashRingData.forEach((node, index) => {
+            node.angle = (360 / hashRingData.length) * index;
+        });
+        
+        redistributeContent();
+        drawHashRing();
+        updateContentList();
+        updateNodeLoads();
+        
+        showMessage('✅ Hash ring rebalanced!', 'success');
+    }
+    
+    function simulateNodeFailure() {
+        if (hashRingData.length <= 1) {
+            showMessage('Need more nodes to simulate failure!', 'error');
+            return;
+        }
+        
+        showMessage('🚨 Simulating node failure...', 'warning');
+        const failedNode = hashRingData[hashRingData.length - 1];
+        
+        // Temporarily remove node
+        removeNode();
+        
+        setTimeout(() => {
+            showMessage('✅ Node recovered! Adding back to ring...', 'success');
+            addNode();
+        }, 5000);
+    }
+    
+    function resetCDN() {
+        if (confirm('Reset the CDN demo? This will clear all content.')) {
+            contentItems = [];
+            hashRingData = [];
+            
+            document.getElementById('distributionCard').style.display = 'none';
+            document.getElementById('loadBalanceCard').style.display = 'none';
+            document.getElementById('nodeLoadCard').style.display = 'none';
+            
+            d3.select('#hashRing').selectAll('*').remove();
+            
+            showMessage('CDN demo reset! 🔄', 'success');
+        }
+    }
+    
+    // Initialize demo
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🌐 CDN demo initialized');
+        initializeHashRing();
+    });
+</script>
+
+<style>
+.geo-node {
+    transition: transform 0.3s ease;
+}
+
+.geo-node:hover {
+    transform: scale(1.05);
+}
+
+#hashRing {
+    background: white;
+}
+</style>
+{% endblock %}

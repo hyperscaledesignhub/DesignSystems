@@ -1,0 +1,493 @@
+{% extends "base.html" %}
+
+{% block title %}Auction Demo - Concurrent Quorum Writes{% endblock %}
+{% block demo_type %}auction{% endblock %}
+
+{% block header_title %}🏆 Live Auction Platform{% endblock %}
+{% block header_subtitle %}Demonstrating concurrent quorum writes with Last-Write-Wins (LWW) resolution{% endblock %}
+
+{% block content %}
+<!-- Auction Status -->
+<div class="card">
+    <h3>🎯 Auction Status <span id="liveIndicator" class="live-indicator">LIVE</span></h3>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="totalBids">0</div>
+            <div class="stat-label">Total Bids</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="activeBidders">0</div>
+            <div class="stat-label">Active Bidders</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="highestBid">$0</div>
+            <div class="stat-label">Highest Bid</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="conflictRate">0%</div>
+            <div class="stat-label">Conflict Rate</div>
+        </div>
+    </div>
+</div>
+
+<!-- Auction Items -->
+<div class="card">
+    <h3>🛍️ Active Auctions</h3>
+    <div id="auctionItems" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-top: 20px;">
+        <!-- Auction items will be populated here -->
+    </div>
+</div>
+
+<!-- Manual Bidding -->
+<div class="card">
+    <h3>🎲 Place Your Bid</h3>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: end;">
+        <div class="form-group">
+            <label class="form-label">Select Item</label>
+            <select class="form-input" id="bidItemSelect">
+                <option value="item_1">🖼️ Rare Digital Art</option>
+                <option value="item_2">⌚ Vintage Watch</option>
+                <option value="item_3">🎸 Signed Guitar</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Your Name</label>
+            <input type="text" class="form-input" id="bidderName" placeholder="Enter your name" value="Manual User">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Bid Amount ($)</label>
+            <input type="number" class="form-input" id="bidAmount" placeholder="Enter amount" min="1">
+        </div>
+    </div>
+    <button class="btn btn-primary" onclick="placeBid()" style="margin-top: 15px;">💰 Place Bid</button>
+</div>
+
+<!-- Simulation Control -->
+<div class="card">
+    <h3>🤖 Bidding Simulation</h3>
+    <p>Simulate multiple concurrent bidders to demonstrate Last-Write-Wins behavior under high concurrency.</p>
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button class="btn btn-success" onclick="startSimulation()" id="startBtn">▶️ Start Auto-Bidding</button>
+        <button class="btn btn-danger" onclick="stopSimulation()" id="stopBtn" disabled>⏹️ Stop Auto-Bidding</button>
+        <button class="btn btn-secondary" onclick="refreshStats()">🔄 Refresh Stats</button>
+    </div>
+    <div id="simulationStatus" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; display: none;">
+        <strong>Simulation Active:</strong> <span id="simBidders">0</span> automated bidders competing
+    </div>
+</div>
+
+<!-- Activity Log -->
+<div class="card">
+    <h3>📊 Recent Bid Activity</h3>
+    <div id="activityLog" style="max-height: 400px; overflow-y: auto; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+        <div style="text-align: center; color: #6b7280;">
+            Bid activity will appear here...
+        </div>
+    </div>
+</div>
+
+<!-- Technical Details -->
+<div class="card">
+    <h3>🔧 How It Works</h3>
+    <ul>
+        <li><strong>Concurrent Access:</strong> Multiple bidders read and write to the same auction items simultaneously</li>
+        <li><strong>Quorum Consistency:</strong> Each bid uses quorum reads and writes for consistency</li>
+        <li><strong>Last-Write-Wins:</strong> When concurrent bids occur, the one with the latest timestamp wins</li>
+        <li><strong>Conflict Detection:</strong> "Bid too low" errors show when someone else bid higher between your read and write</li>
+        <li><strong>Load Distribution:</strong> Bids are distributed across all cluster nodes</li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Use the socket from base.html, don't create a new one
+let stats = { totalBids: 0, conflicts: 0 };
+
+// Helper function to show messages (using existing CSS classes)
+function showMessage(message, type = 'info') {
+    const messageClass = type === 'success' ? 'success-message' : 
+                        type === 'error' ? 'error-message' : 'success-message';
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = messageClass;
+    alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 15px 20px; border-radius: 8px; z-index: 1000; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+    alertDiv.textContent = message;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.style.opacity = '0';
+        alertDiv.style.transform = 'translateX(100%)';
+        alertDiv.style.transition = 'all 0.3s ease';
+        setTimeout(() => alertDiv.remove(), 300);
+    }, 3000);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🏆 Auction demo initialized');
+    loadAuctionItems();
+    setInterval(function() {
+        console.log('Refreshing auction items...');
+        loadAuctionItems();
+    }, 2000); // Refresh every 2 seconds
+    setInterval(updateStats, 5000); // Update stats every 5 seconds
+});
+
+// Socket.IO handlers
+socket.on('bid_update', function(data) {
+    console.log('New bid:', data);
+    logActivity(`💰 ${data.bidder} bid $${data.amount} on item ${data.item_id.split('_')[1]}`);
+    loadAuctionItems(); // Refresh items
+});
+
+// Load auction items
+function loadAuctionItems() {
+    console.log('Fetching auction items...');
+    fetch('/api/items')
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Received data:', data);
+            const container = document.getElementById('auctionItems');
+            container.innerHTML = '';
+            
+            let totalBids = 0;
+            let highestBid = 0;
+            let activeBidders = new Set();
+            
+            data.items.forEach(item => {
+                totalBids += item.bid_count || 0;
+                if (item.current_bid > highestBid) {
+                    highestBid = item.current_bid;
+                }
+                if (item.bidder) {
+                    activeBidders.add(item.bidder);
+                }
+                
+                const itemCard = createAuctionItemCard(item);
+                container.appendChild(itemCard);
+            });
+            
+            // Update stats
+            document.getElementById('totalBids').textContent = totalBids;
+            document.getElementById('highestBid').textContent = `$${highestBid}`;
+            document.getElementById('activeBidders').textContent = activeBidders.size;
+            
+            stats.totalBids = totalBids;
+        })
+        .catch(error => {
+            console.error('Error loading items:', error);
+            const container = document.getElementById('auctionItems');
+            container.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Error loading auction items. Please check console.</div>';
+        });
+}
+
+// Create auction item card
+function createAuctionItemCard(item) {
+    const card = document.createElement('div');
+    card.className = 'auction-item-card';
+    card.innerHTML = `
+        <div class="item-header">
+            <h4>${item.name}</h4>
+            <span class="bid-count">${item.bid_count || 0} bids</span>
+        </div>
+        <div class="current-bid">
+            <div class="bid-amount">$${item.current_bid || 0}</div>
+            <div class="bid-label">Current Bid</div>
+        </div>
+        <div class="bidder-info">
+            ${item.bidder ? `
+                <span class="bidder-name">👤 ${item.bidder}</span>
+            ` : '<span class="no-bidder">No bids yet</span>'}
+        </div>
+        <div class="bid-history">
+            ${item.bid_history && item.bid_history.length > 0 ? `
+                <div class="history-title">Recent Bids:</div>
+                ${item.bid_history.slice(-3).reverse().map(bid => `
+                    <div class="history-item">
+                        <span>${bid.bidder}</span>
+                        <span>$${bid.amount}</span>
+                    </div>
+                `).join('')}
+            ` : ''}
+        </div>
+    `;
+    return card;
+}
+
+// Place manual bid
+function placeBid() {
+    const itemId = document.getElementById('bidItemSelect').value;
+    const bidder = document.getElementById('bidderName').value;
+    const amount = parseInt(document.getElementById('bidAmount').value);
+    
+    if (!bidder || !amount) {
+        alert('Please enter your name and bid amount');
+        return;
+    }
+    
+    const startTime = Date.now();
+    
+    fetch('/api/bid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            item_id: itemId,
+            bidder: bidder,
+            amount: amount
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const duration = Date.now() - startTime;
+        
+        if (data.success) {
+            showMessage(`✅ Bid placed successfully! (${duration}ms)`, 'success');
+            logActivity(`✅ Your bid of $${amount} was accepted (${data.timing.total_ms}ms via ${data.node_used})`);
+            document.getElementById('bidAmount').value = '';
+        } else {
+            showMessage(`❌ ${data.message || data.error}`, 'error');
+            logActivity(`❌ Bid rejected: ${data.error} ${data.message || ''}`);
+            
+            if (data.error === 'Bid too low') {
+                stats.conflicts++;
+                updateConflictRate();
+            }
+        }
+    })
+    .catch(error => {
+        showMessage(`Error: ${error.message}`, 'error');
+    });
+}
+
+// Start bidding simulation
+function startSimulation() {
+    fetch('/api/simulation/start', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('simulationStatus').style.display = 'block';
+                document.getElementById('simBidders').textContent = data.bidders;
+                showMessage('🤖 Auto-bidding simulation started!', 'success');
+                logActivity('🚀 Started automated bidding simulation');
+            }
+        });
+}
+
+// Stop bidding simulation
+function stopSimulation() {
+    fetch('/api/simulation/stop', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('simulationStatus').style.display = 'none';
+                showMessage('🛑 Simulation stopped', 'info');
+                logActivity('⏹️ Stopped automated bidding simulation');
+            }
+        });
+}
+
+// Update statistics
+function updateStats() {
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            // Update conflict rate if we have data
+            if (stats.totalBids > 0) {
+                const conflictRate = (stats.conflicts / stats.totalBids * 100).toFixed(1);
+                document.getElementById('conflictRate').textContent = `${conflictRate}%`;
+            }
+        });
+}
+
+// Update conflict rate
+function updateConflictRate() {
+    if (stats.totalBids > 0) {
+        const rate = (stats.conflicts / stats.totalBids * 100).toFixed(1);
+        document.getElementById('conflictRate').textContent = `${rate}%`;
+    }
+}
+
+// Log activity
+function logActivity(message) {
+    const log = document.getElementById('activityLog');
+    const entry = document.createElement('div');
+    const timestamp = new Date().toLocaleTimeString();
+    
+    entry.className = 'activity-entry';
+    entry.innerHTML = `
+        <span class="timestamp">${timestamp}</span>
+        <span class="message">${message}</span>
+    `;
+    
+    if (log.children[0] && log.children[0].textContent.includes('will appear')) {
+        log.innerHTML = '';
+    }
+    
+    log.insertBefore(entry, log.firstChild);
+    
+    // Keep only last 50 entries
+    while (log.children.length > 50) {
+        log.removeChild(log.lastChild);
+    }
+}
+
+// Refresh stats
+function refreshStats() {
+    loadAuctionItems();
+    updateStats();
+    showMessage('🔄 Stats refreshed', 'info');
+}
+</script>
+
+<style>
+.auction-item-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.auction-item-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.item-header h4 {
+    margin: 0;
+    font-size: 18px;
+    color: #1f2937;
+}
+
+.bid-count {
+    background: #dbeafe;
+    color: #1e40af;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.current-bid {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.bid-amount {
+    font-size: 36px;
+    font-weight: bold;
+    color: #10b981;
+    margin-bottom: 5px;
+}
+
+.bid-label {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.bidder-info {
+    text-align: center;
+    margin: 15px 0;
+}
+
+.bidder-name {
+    background: #dcfce7;
+    color: #16a34a;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.no-bidder {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.bid-history {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.history-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.activity-entry {
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.timestamp {
+    font-size: 12px;
+    color: #9ca3af;
+    font-family: monospace;
+}
+
+.message {
+    flex: 1;
+    color: #374151;
+}
+
+.live-indicator {
+    background: #10b981;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: 10px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+</style>
+{% endblock %}

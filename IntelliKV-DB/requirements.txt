@@ -1,0 +1,27 @@
+# Core dependencies
+Flask==2.3.3
+requests==2.31.0
+werkzeug==2.3.7
+PyYAML==6.0.1
+
+# Consensus and distributed systems
+pysyncobj==0.3.12
+
+# Consistent hashing
+hashring==1.5.1
+
+# Merkle trees for anti-entropy
+# merkletools==1.0.3
+
+# System monitoring
+psutil==5.9.5
+
+# Additional utilities
+dataclasses-json==0.6.1
+
+# Testing (for development)
+pytest==7.4.2
+pytest-cov==4.1.0
+
+# Optional: For better JSON handling
+ujson==5.8.0

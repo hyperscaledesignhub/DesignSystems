@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-config
+  namespace: distributed-db
+data:
+  # Cluster configuration
+  REPLICATION_FACTOR: "3"
+  DEFAULT_READ_CONSISTENCY: "ONE"
+  DEFAULT_WRITE_CONSISTENCY: "ONE"
+  
+  # Timing configurations
+  FAILURE_CHECK_INTERVAL: "5.0"
+  FAILURE_THRESHOLD: "3"
+  ANTI_ENTROPY_INTERVAL: "60.0"
+  
+  # Logging
+  LOG_LEVEL: "INFO"
+  
+  # Monitoring
+  MONITORING_ENABLED: "true"
+  
+  # Network
+  HOST: "0.0.0.0"
+  PORT: "8080"
+  HEALTH_CHECK_PORT: "8081"
