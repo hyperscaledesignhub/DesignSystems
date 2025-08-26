@@ -1,0 +1,201 @@
+version: '3.8'
+
+services:
+  # Databases
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: digital_wallet
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - wallet-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - wallet-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - wallet-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+    networks:
+      - wallet-network
+
+  # Services
+  user-service:
+    build: 
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.python
+      args:
+        - SERVICE_PATH=services/user-service
+    ports:
+      - "9081:9081"
+    environment:
+      - USER_SERVICE_DB_HOST=postgres
+      - USER_SERVICE_DB_PORT=5432
+      - USER_SERVICE_DB_USER=postgres
+      - USER_SERVICE_DB_PASSWORD=password
+      - USER_SERVICE_DB_NAME=user_service
+    depends_on:
+      - postgres
+    networks:
+      - wallet-network
+
+  wallet-service:
+    build: 
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.python
+      args:
+        - SERVICE_PATH=services/wallet-service
+    ports:
+      - "9082:9082"
+    environment:
+      - WALLET_SERVICE_DB_HOST=postgres
+      - WALLET_SERVICE_DB_PORT=5432
+      - WALLET_SERVICE_DB_USER=postgres
+      - WALLET_SERVICE_DB_PASSWORD=password
+      - WALLET_SERVICE_DB_NAME=wallet_service
+      - USER_SERVICE_URL=http://user-service:9081
+    depends_on:
+      - postgres
+      - user-service
+    networks:
+      - wallet-network
+
+  transaction-service:
+    build: 
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.python
+      args:
+        - SERVICE_PATH=services/transaction-service
+    ports:
+      - "9083:9083"
+    environment:
+      - TRANSACTION_SERVICE_DB_HOST=postgres
+      - TRANSACTION_SERVICE_DB_PORT=5432
+      - TRANSACTION_SERVICE_DB_USER=postgres
+      - TRANSACTION_SERVICE_DB_PASSWORD=password
+      - TRANSACTION_SERVICE_DB_NAME=transaction_service
+      - WALLET_SERVICE_URL=http://wallet-service:9082
+      - EVENT_SERVICE_URL=http://event-service:9085
+      - STATE_SERVICE_URL=http://state-service:9084
+    depends_on:
+      - postgres
+      - wallet-service
+      - event-service
+      - state-service
+    networks:
+      - wallet-network
+
+  state-service:
+    build: 
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.python
+      args:
+        - SERVICE_PATH=services/state-service
+    ports:
+      - "9084:9084"
+    environment:
+      - STATE_SERVICE_DB_HOST=postgres
+      - STATE_SERVICE_DB_PORT=5432
+      - STATE_SERVICE_DB_USER=postgres
+      - STATE_SERVICE_DB_PASSWORD=password
+      - STATE_SERVICE_DB_NAME=state_service
+    depends_on:
+      - postgres
+    volumes:
+      - rocksdb_data:/tmp/wallet_state
+    networks:
+      - wallet-network
+
+  event-service:
+    build: 
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.go
+      args:
+        - SERVICE_PATH=services/event-service
+    ports:
+      - "9085:9085"
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - KAFKA_TOPIC=wallet-events
+      - PORT=9085
+    depends_on:
+      - kafka
+    networks:
+      - wallet-network
+
+  api-gateway:
+    build: 
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile.python
+      args:
+        - SERVICE_PATH=services/api-gateway
+    ports:
+      - "9080:9080"
+    environment:
+      - USER_SERVICE_URL=http://user-service:9081
+      - WALLET_SERVICE_URL=http://wallet-service:9082
+      - TRANSACTION_SERVICE_URL=http://transaction-service:9083
+      - STATE_SERVICE_URL=http://state-service:9084
+      - EVENT_SERVICE_URL=http://event-service:9085
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - user-service
+      - wallet-service
+      - transaction-service
+      - state-service
+      - event-service
+      - redis
+    networks:
+      - wallet-network
+
+  # Frontend
+  frontend:
+    build: 
+      context: ../../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - wallet-network
+
+volumes:
+  postgres_data:
+  rocksdb_data:
+
+networks:
+  wallet-network:
+    driver: bridge
