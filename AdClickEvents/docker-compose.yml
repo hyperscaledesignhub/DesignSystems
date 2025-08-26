@@ -1,0 +1,64 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminpass123
+      DOCKER_INFLUXDB_INIT_ORG: demo-org
+      DOCKER_INFLUXDB_INIT_BUCKET: adclick-demo
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: demo-token
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+
+  demo-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8900:8900"
+    environment:
+      KAFKA_SERVERS: kafka:9092
+      INFLUXDB_HOST: influxdb
+      INFLUXDB_PORT: 8086
+      INFLUXDB_TOKEN: demo-token
+      INFLUXDB_ORG: demo-org
+      INFLUXDB_BUCKET: adclick-demo
+    depends_on:
+      - kafka
+      - influxdb
+
+  demo-ui:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - demo-api
+
+volumes:
+  influxdb_data:

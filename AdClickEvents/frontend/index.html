@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdClick Demo Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .header {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            color: #2d3748;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #4a5568;
+            font-size: 1.2em;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        .controls {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status.active {
+            background: #48bb78;
+            color: white;
+        }
+        .status.inactive {
+            background: #e53e3e;
+            color: white;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: currentColor;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        select, button {
+            padding: 12px 20px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        select:focus, button:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+        button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        button:hover {
+            background: #3182ce;
+            transform: translateY(-1px);
+        }
+        button.stop {
+            background: #e53e3e;
+        }
+        button.stop:hover {
+            background: #c53030;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .metric:last-child {
+            border-bottom: none;
+        }
+        .metric-label {
+            color: #4a5568;
+            font-weight: 500;
+        }
+        .metric-value {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: #2d3748;
+        }
+        .events-stream {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+        .alert {
+            background: #fed7d7;
+            border-left: 4px solid #e53e3e;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .alert.warning {
+            background: #fefcbf;
+            border-left-color: #d69e2e;
+        }
+        .alert.info {
+            background: #bee3f8;
+            border-left-color: #3182ce;
+        }
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 12px 12px 0 0;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            background: #f7fafc;
+            border-right: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        .tab:hover {
+            background: #edf2f7;
+        }
+        .tab.active {
+            background: white;
+            color: #4299e1;
+            border-bottom: 3px solid #4299e1;
+        }
+        .tab-content {
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #4299e1;
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+        }
+        .refresh-btn:hover {
+            transform: scale(1.1);
+            background: #3182ce;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 AdClick Demo Dashboard</h1>
+        <p>Complete Event Aggregation & Analytics Platform</p>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <div id="status" class="status inactive">
+                <div class="status-dot"></div>
+                <span>Simulation Stopped</span>
+            </div>
+            
+            <select id="scenario">
+                <option value="ecommerce">🛒 E-commerce Holiday Sale</option>
+                <option value="gaming">🎮 Mobile Gaming Campaign</option>
+                <option value="finance">💼 Financial Services</option>
+                <option value="social">📱 Social Media Platform</option>
+            </select>
+
+            <button id="startBtn" onclick="startSimulation()">
+                ▶️ Start Simulation
+            </button>
+            
+            <button id="stopBtn" onclick="stopSimulation()" class="stop" style="display: none;">
+                ⏹️ Stop Simulation
+            </button>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('dashboard')">📊 Dashboard</div>
+            <div class="tab" onclick="showTab('analytics')">📈 Analytics</div>
+            <div class="tab" onclick="showTab('fraud')">🔒 Fraud Detection</div>
+            <div class="tab" onclick="showTab('system')">⚙️ System Health</div>
+        </div>
+
+        <div class="tab-content">
+            <div id="dashboard-tab" class="tab-panel">
+                <div class="dashboard">
+                    <div class="card">
+                        <h3>📊 Real-time Metrics</h3>
+                        <div id="metrics">
+                            <div class="metric">
+                                <span class="metric-label">Total Clicks</span>
+                                <span class="metric-value" id="total-clicks">0</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Revenue/Hour</span>
+                                <span class="metric-value" id="revenue">$0</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Fraud Rate</span>
+                                <span class="metric-value" id="fraud-rate">0%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Clicks/Second</span>
+                                <span class="metric-value" id="clicks-per-sec">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>🏆 Top Performing Ads</h3>
+                        <div id="top-ads">
+                            <div style="text-align: center; color: #4a5568; padding: 20px;">
+                                Start simulation to see top ads
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>🌍 Geographic Distribution</h3>
+                        <div id="countries">
+                            <div style="text-align: center; color: #4a5568; padding: 20px;">
+                                Geographic data will appear here
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📡 Live Event Stream</h3>
+                    <div id="events-stream" class="events-stream">
+                        Waiting for events...
+                    </div>
+                </div>
+            </div>
+
+            <div id="analytics-tab" class="tab-panel" style="display: none;">
+                <div class="card">
+                    <h3>📈 24-Hour Trends</h3>
+                    <div id="trends-chart" style="height: 300px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; background: #f8f9fa;">
+                        <canvas id="trendsCanvas" width="800" height="260"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>🎯 Ad Performance Comparison</h3>
+                    <div id="ad-performance">
+                        <div style="text-align: center; color: #4a5568; padding: 20px;">
+                            Loading ad performance data...
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>📊 Campaign ROI Analysis</h3>
+                    <div id="campaign-roi">
+                        <div style="text-align: center; color: #4a5568; padding: 20px;">
+                            Loading campaign data...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="fraud-tab" class="tab-panel" style="display: none;">
+                <div class="card">
+                    <h3>🔒 Fraud Detection Alerts</h3>
+                    <div id="fraud-alerts">
+                        <p>No fraud alerts currently. Start simulation to see fraud detection in action.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="system-tab" class="tab-panel" style="display: none;">
+                <div class="card">
+                    <h3>⚙️ System Health Status</h3>
+                    <div id="system-status">
+                        <div class="metric">
+                            <span class="metric-label">Demo API</span>
+                            <span class="metric-value">✅ Healthy</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Event Simulator</span>
+                            <span class="metric-value">✅ Ready</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Aggregation Service</span>
+                            <span class="metric-value">✅ Running</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Database</span>
+                            <span class="metric-value">✅ Connected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="refresh-btn" onclick="refreshData()" title="Refresh Data">
+        🔄
+    </button>
+
+    <script>
+        let isSimulationActive = false;
+        let updateInterval;
+        const API_BASE = 'http://localhost:8900';
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tab panels
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.style.display = 'none';
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab panel
+            document.getElementById(tabName + '-tab').style.display = 'block';
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        async function startSimulation() {
+            try {
+                const scenario = document.getElementById('scenario').value;
+                
+                // Change scenario first
+                await fetch(`${API_BASE}/api/scenario`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scenario })
+                });
+
+                // Start simulation
+                const response = await fetch(`${API_BASE}/api/simulation/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ speed: 2.0 })
+                });
+
+                if (response.ok) {
+                    isSimulationActive = true;
+                    updateUI();
+                    startAutoRefresh();
+                } else {
+                    alert('Failed to start simulation. Make sure the demo API is running on port 8900.');
+                }
+            } catch (error) {
+                alert('Error: Make sure the demo API is running on port 8900');
+                console.error(error);
+            }
+        }
+
+        async function stopSimulation() {
+            try {
+                await fetch(`${API_BASE}/api/simulation/stop`, { method: 'POST' });
+                isSimulationActive = false;
+                updateUI();
+                stopAutoRefresh();
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function updateUI() {
+            const status = document.getElementById('status');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            if (isSimulationActive) {
+                status.className = 'status active';
+                status.innerHTML = '<div class="status-dot"></div><span>Simulation Active</span>';
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'flex';
+            } else {
+                status.className = 'status inactive';
+                status.innerHTML = '<div class="status-dot"></div><span>Simulation Stopped</span>';
+                startBtn.style.display = 'flex';
+                stopBtn.style.display = 'none';
+            }
+        }
+
+        async function refreshData() {
+            try {
+                // Add timeout to prevent hanging
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                
+                // Refresh metrics
+                const metricsResponse = await fetch(`${API_BASE}/api/metrics/realtime`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                if (!metricsResponse.ok) {
+                    throw new Error(`HTTP ${metricsResponse.status}`);
+                }
+                
+                const metrics = await metricsResponse.json();
+                
+                document.getElementById('total-clicks').textContent = metrics.total_clicks.toLocaleString();
+                document.getElementById('revenue').textContent = '$' + metrics.revenue_per_hour.toLocaleString();
+                document.getElementById('fraud-rate').textContent = metrics.fraud_rate.toFixed(1) + '%';
+                document.getElementById('clicks-per-sec').textContent = metrics.clicks_per_second;
+
+                // Update top ads
+                if (metrics.top_ads && metrics.top_ads.length > 0) {
+                    const topAdsHtml = metrics.top_ads.map((ad, index) => 
+                        `<div class="metric">
+                            <span class="metric-label">#${index + 1} ${ad.name}</span>
+                            <span class="metric-value">${ad.clicks} clicks</span>
+                        </div>`
+                    ).join('');
+                    document.getElementById('top-ads').innerHTML = topAdsHtml;
+                }
+
+                // Update countries
+                if (metrics.country_distribution) {
+                    const countriesHtml = Object.entries(metrics.country_distribution).map(([country, data]) => 
+                        `<div class="metric">
+                            <span class="metric-label">${country}</span>
+                            <span class="metric-value">${data.clicks} (${data.percentage}%)</span>
+                        </div>`
+                    ).join('');
+                    document.getElementById('countries').innerHTML = countriesHtml;
+                }
+
+                // Update events stream
+                const eventsResponse = await fetch(`${API_BASE}/api/events/recent`);
+                const eventsData = await eventsResponse.json();
+                if (eventsData.events && eventsData.events.length > 0) {
+                    const eventsHtml = eventsData.events.slice(-10).map(event => 
+                        `${event.timestamp.substring(11, 19)} | ${event.ad_id} | ${event.country} | ${event.device} ${event.is_fraud ? '⚠️ FRAUD' : '✅'}`
+                    ).join('\n');
+                    document.getElementById('events-stream').textContent = eventsHtml;
+                }
+
+                // Update fraud alerts
+                const fraudResponse = await fetch(`${API_BASE}/api/fraud/alerts`);
+                const fraudData = await fraudResponse.json();
+                if (fraudData.alerts && fraudData.alerts.length > 0) {
+                    const alertsHtml = fraudData.alerts.map(alert => 
+                        `<div class="alert">
+                            <strong>${alert.type.replace('_', ' ').toUpperCase()}</strong> - ${alert.severity.toUpperCase()}
+                            <br><small>${alert.description}</small>
+                        </div>`
+                    ).join('');
+                    document.getElementById('fraud-alerts').innerHTML = alertsHtml;
+                } else if (isSimulationActive) {
+                    document.getElementById('fraud-alerts').innerHTML = '<p>✅ No fraud detected - system is secure</p>';
+                }
+
+                // Update analytics if analytics tab is visible
+                updateAnalytics();
+
+            } catch (error) {
+                console.error('Failed to refresh data:', error);
+                if (error.message.includes('Failed to fetch')) {
+                    document.getElementById('events-stream').textContent = 'Error: Cannot connect to demo API at port 8900.\nMake sure the backend services are running.';
+                }
+            }
+        }
+
+        function startAutoRefresh() {
+            stopAutoRefresh();
+            updateInterval = setInterval(refreshData, 5000); // Increased to 5 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        }
+
+        async function updateAnalytics() {
+            try {
+                // Get trends data
+                const trendsResponse = await fetch(`${API_BASE}/api/analytics/trends`);
+                const trends = await trendsResponse.json();
+                
+                // Draw trends chart
+                drawTrendsChart(trends);
+                
+                // Get ad performance data
+                const adsResponse = await fetch(`${API_BASE}/api/ads/performance`);
+                const adsData = await adsResponse.json();
+                
+                // Update ad performance table
+                const adPerformanceHtml = adsData.ads.map(ad => 
+                    `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #e2e8f0;">
+                        <div>
+                            <strong>${ad.name}</strong>
+                            <div style="font-size: 12px; color: #4a5568;">${ad.clicks} clicks | ${ad.impressions} impressions</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div>CTR: <strong>${ad.ctr}%</strong></div>
+                            <div>CPC: <strong>$${ad.cpc}</strong></div>
+                            <div>ROI: <strong>${ad.roi}x</strong></div>
+                        </div>
+                    </div>`
+                ).join('');
+                document.getElementById('ad-performance').innerHTML = adPerformanceHtml;
+                
+                // Get campaign comparison data
+                const campaignResponse = await fetch(`${API_BASE}/api/campaigns/comparison`);
+                const campaignData = await campaignResponse.json();
+                
+                // Update campaign ROI analysis
+                const campaignHtml = campaignData.campaigns.map(campaign => 
+                    `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #e2e8f0;">
+                        <div>
+                            <strong>${campaign.name}</strong>
+                            <div style="font-size: 12px; color: #4a5568;">Budget: $${campaign.budget.toLocaleString()} | Spent: $${campaign.spent.toLocaleString()}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div>Conversions: <strong>${campaign.conversions}</strong></div>
+                            <div>Conv. Rate: <strong>${campaign.conversion_rate}%</strong></div>
+                            <div style="color: ${campaign.conversion_rate > 5 ? '#48bb78' : '#e53e3e'}">
+                                <strong>${campaign.status.toUpperCase()}</strong>
+                            </div>
+                        </div>
+                    </div>`
+                ).join('');
+                document.getElementById('campaign-roi').innerHTML = campaignHtml;
+                
+            } catch (error) {
+                console.error('Failed to update analytics:', error);
+            }
+        }
+
+        function drawTrendsChart(trends) {
+            const canvas = document.getElementById('trendsCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Set up chart parameters
+            const padding = 40;
+            const chartWidth = width - (padding * 2);
+            const chartHeight = height - (padding * 2);
+            
+            const maxClicks = Math.max(...trends.clicks);
+            const maxRevenue = Math.max(...trends.revenue);
+            
+            // Draw grid lines
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            
+            // Horizontal grid lines
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (chartHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+            }
+            
+            // Draw clicks line
+            ctx.strokeStyle = '#4299e1';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            for (let i = 0; i < trends.clicks.length; i++) {
+                const x = padding + (chartWidth / (trends.clicks.length - 1)) * i;
+                const y = padding + chartHeight - (trends.clicks[i] / maxClicks) * chartHeight;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw revenue line
+            ctx.strokeStyle = '#48bb78';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            for (let i = 0; i < trends.revenue.length; i++) {
+                const x = padding + (chartWidth / (trends.revenue.length - 1)) * i;
+                const y = padding + chartHeight - (trends.revenue[i] / maxRevenue) * chartHeight;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Add labels
+            ctx.fillStyle = '#4a5568';
+            ctx.font = '12px Arial';
+            
+            // Y-axis labels
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (chartHeight / 5) * i;
+                const value = Math.round(maxClicks * (1 - i / 5));
+                ctx.fillText(value.toString(), 5, y + 4);
+            }
+            
+            // X-axis labels (show every 4 hours)
+            for (let i = 0; i < trends.hours.length; i += 4) {
+                const x = padding + (chartWidth / (trends.hours.length - 1)) * i;
+                ctx.fillText(trends.hours[i], x - 15, height - 5);
+            }
+            
+            // Legend
+            ctx.fillStyle = '#4299e1';
+            ctx.fillRect(width - 150, 20, 15, 15);
+            ctx.fillStyle = '#4a5568';
+            ctx.fillText('Clicks', width - 130, 32);
+            
+            ctx.fillStyle = '#48bb78';
+            ctx.fillRect(width - 150, 40, 15, 15);
+            ctx.fillStyle = '#4a5568';
+            ctx.fillText('Revenue ($)', width - 130, 52);
+        }
+
+        // Initial load
+        refreshData();
+        
+        // Check if simulation is already running
+        fetch(`${API_BASE}/health`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.simulation_active) {
+                    isSimulationActive = true;
+                    updateUI();
+                    startAutoRefresh();
+                }
+            })
+            .catch(() => {
+                document.getElementById('events-stream').textContent = 'Cannot connect to demo API. Please start the backend services.';
+            });
+    </script>
+</body>
+</html>
