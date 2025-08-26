@@ -1,0 +1,5 @@
+flask==2.3.3
+kafka-python==2.0.2
+influxdb-client==1.36.1
+watchdog==3.0.0
+requests==2.31.0

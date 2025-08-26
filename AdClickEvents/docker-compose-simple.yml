@@ -1,0 +1,67 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - adclick-demo
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    networks:
+      - adclick-demo
+
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    environment:
+      INFLUXDB_DB: adclick
+      INFLUXDB_ADMIN_USER: admin
+      INFLUXDB_ADMIN_PASSWORD: adminpass123
+      INFLUXDB_USER: adclick_user  
+      INFLUXDB_USER_PASSWORD: userpass123
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    networks:
+      - adclick-demo
+
+  demo-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8900:8900"
+    environment:
+      KAFKA_SERVERS: localhost:9092
+      INFLUXDB_HOST: influxdb
+      INFLUXDB_PORT: 8086
+      INFLUXDB_TOKEN: demo-token
+      INFLUXDB_ORG: demo-org
+      INFLUXDB_BUCKET: adclick-demo
+    depends_on:
+      - kafka
+      - influxdb
+    networks:
+      - adclick-demo
+    network_mode: host
+
+volumes:
+  influxdb_data:
+
+networks:
+  adclick-demo:
+    driver: bridge
