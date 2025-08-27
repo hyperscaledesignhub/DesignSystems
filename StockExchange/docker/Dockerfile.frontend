@@ -1,0 +1,14 @@
+# Use nginx to serve pre-built files
+FROM nginx:alpine
+
+# Copy custom nginx config
+COPY frontend/nginx.conf /etc/nginx/nginx.conf
+
+# Copy pre-built application (assuming build exists on host)
+COPY frontend/build /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

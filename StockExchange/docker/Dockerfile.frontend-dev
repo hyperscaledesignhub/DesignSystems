@@ -1,0 +1,25 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY frontend/package*.json ./
+
+# Install dependencies including serve
+RUN npm install --legacy-peer-deps
+RUN npm install -g serve
+# Fix ajv dependency issue
+RUN npm install ajv@8.12.0 ajv-keywords@5.1.0 --save-dev
+
+# Copy source code
+COPY frontend/src ./src
+COPY frontend/public ./public
+
+# Set environment variables
+ENV GENERATE_SOURCEMAP=false
+ENV REACT_APP_API_URL=http://localhost:8347
+
+EXPOSE 3000
+
+# Serve the app directly from source in development mode
+CMD ["npm", "start"]
