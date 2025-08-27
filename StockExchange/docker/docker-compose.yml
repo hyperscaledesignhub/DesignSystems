@@ -1,0 +1,290 @@
+version: '3.8'
+
+services:
+  # Infrastructure
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: stockexchange
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Core Services
+  user-service:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.user-service
+    ports:
+      - "8975:8975"
+    environment:
+      - USER_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/stockexchange
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=demo-secret-key-12345
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8975/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  wallet-service:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.wallet-service
+    ports:
+      - "8651:8651"
+    environment:
+      - WALLET_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/stockexchange
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=demo-secret-key-12345
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8651/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  risk-manager:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.risk-manager
+    ports:
+      - "8539:8539"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=demo-secret-key-12345
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8539/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  matching-engine:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.matching-engine
+    ports:
+      - "8792:8792"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=demo-secret-key-12345
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8792/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  order-manager:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.order-manager
+    ports:
+      - "8426:8426"
+    environment:
+      - ORDER_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/stockexchange
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=demo-secret-key-12345
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      risk-manager:
+        condition: service_healthy
+      wallet-service:
+        condition: service_healthy
+      matching-engine:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8426/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  client-gateway:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.client-gateway
+    ports:
+      - "8347:8347"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=demo-secret-key-12345
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      order-manager:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8347/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  market-data-service:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.market-data-service
+    ports:
+      - "8864:8864"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      redis:
+        condition: service_healthy
+      matching-engine:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8864/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  reporting-service:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.reporting-service
+    ports:
+      - "9127:9127"
+    environment:
+      - REPORTING_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/stockexchange
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=demo-secret-key-12345
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9127/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  notification-service:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.notification-service
+    ports:
+      - "9243:9243"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=demo-secret-key-12345
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9243/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # Jaeger collector HTTP
+      - "6831:6831/udp"  # Jaeger agent UDP
+      - "14250:14250"  # Jaeger gRPC
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:14269/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend
+  frontend:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.frontend-dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - client-gateway
+    environment:
+      - REACT_APP_API_URL=http://localhost:8347
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    driver: bridge

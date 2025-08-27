@@ -1,0 +1,205 @@
+.reports {
+  animation: fadeIn 0.5s ease;
+}
+
+.reports-header {
+  margin-bottom: 30px;
+}
+
+.reports-header h1 {
+  font-size: 32px;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.reports-header p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+}
+
+.report-controls {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.control-group select,
+.control-group input {
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  min-width: 150px;
+}
+
+.btn-generate,
+.btn-download {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-generate {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-generate:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-download {
+  background: #10b981;
+  color: white;
+}
+
+.btn-download:hover {
+  background: #059669;
+}
+
+.report-display {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  min-height: 400px;
+}
+
+.report-content h3 {
+  margin-bottom: 20px;
+  font-size: 20px;
+  color: #111827;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.report-table th {
+  text-align: left;
+  padding: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.report-table td {
+  padding: 12px;
+  font-size: 14px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.report-table tr:hover {
+  background: #f9fafb;
+}
+
+.report-table .buy {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.report-table .sell {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.report-table .profit {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.report-table .loss {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status.pending {
+  background: #fed7aa;
+  color: #92400e;
+}
+
+.status.filled {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status.cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.no-report {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: #9ca3af;
+}
+
+.no-report svg {
+  color: #d1d5db;
+  margin-bottom: 16px;
+}
+
+.no-data {
+  text-align: center;
+  padding: 60px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+}
+
+@media (max-width: 1024px) {
+  .report-controls {
+    flex-wrap: wrap;
+  }
+}
