@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY services/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY services/shared /app/shared
+
+ARG SERVICE_NAME
+COPY services/${SERVICE_NAME} /app/${SERVICE_NAME}
+
+ENV PYTHONPATH=/app
+ENV SERVICE_NAME=${SERVICE_NAME}
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "python /app/${SERVICE_NAME}/main.py"]

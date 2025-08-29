@@ -1,0 +1,7 @@
+{
+  "to_recipients": ["success@demo.com"],
+  "subject": "Real-time Notification Success!",
+  "body": "This email demonstrates the complete notification service integration with WebSocket real-time updates!",
+  "priority": "normal",
+  "is_draft": false
+}

@@ -1,0 +1,332 @@
+services:
+  # Infrastructure Services
+  postgres:
+    image: postgres:15
+    container_name: demo-postgres
+    environment:
+      POSTGRES_DB: emaildb
+      POSTGRES_USER: emailuser
+      POSTGRES_PASSWORD: emailpass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emailuser -d emaildb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - email-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: demo-redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - email-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: demo-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - email-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: demo-minio
+    environment:
+      MINIO_ROOT_USER: minioaccess
+      MINIO_ROOT_PASSWORD: miniosecret
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - email-network
+
+  # Tracing Infrastructure
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: demo-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "6831:6831/udp"  # Agent UDP
+      - "6832:6832/udp"  # Agent UDP
+      - "14250:14250"  # gRPC
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=debug
+    networks:
+      - email-network
+
+  # Microservices
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: auth-service
+    container_name: demo-auth-service
+    environment:
+      - PORT=8001
+      - DATABASE_URL=postgresql://emailuser:emailpass@postgres:5432/emaildb
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=demo-secret-key-change-in-production
+      - JAEGER_HOST=jaeger
+      - JAEGER_COLLECTOR_PORT=14268
+      - ENVIRONMENT=demo
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - email-network
+
+  email-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: email-service
+    container_name: demo-email-service
+    environment:
+      - PORT=8002
+      - DATABASE_URL=postgresql://emailuser:emailpass@postgres:5432/emaildb
+      - REDIS_URL=redis://redis:6379
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - SPAM_SERVICE_URL=http://spam-service:8003
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8004
+      - JAEGER_HOST=jaeger
+      - JAEGER_COLLECTOR_PORT=14268
+      - ENVIRONMENT=demo
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      spam-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - email-network
+
+  spam-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: spam-service
+    container_name: demo-spam-service
+    environment:
+      - PORT=8003
+      - JAEGER_HOST=jaeger
+      - JAEGER_COLLECTOR_PORT=14268
+      - ENVIRONMENT=demo
+    ports:
+      - "8003:8003"
+    depends_on:
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - email-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: notification-service
+    container_name: demo-notification-service
+    environment:
+      - PORT=8004
+      - DATABASE_URL=postgresql://emailuser:emailpass@postgres:5432/emaildb
+      - REDIS_URL=redis://redis:6379
+      - JAEGER_HOST=jaeger
+      - JAEGER_COLLECTOR_PORT=14268
+      - ENVIRONMENT=demo
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - email-network
+
+  attachment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: attachment-service
+    container_name: demo-attachment-service
+    environment:
+      - PORT=8005
+      - DATABASE_URL=postgresql://emailuser:emailpass@postgres:5432/emaildb
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioaccess
+      - MINIO_SECRET_KEY=miniosecret
+      - MINIO_BUCKET=email-attachments
+      - JAEGER_HOST=jaeger
+      - JAEGER_COLLECTOR_PORT=14268
+      - ENVIRONMENT=demo
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - email-network
+
+  search-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: search-service
+    container_name: demo-search-service
+    environment:
+      - PORT=8006
+      - DATABASE_URL=postgresql://emailuser:emailpass@postgres:5432/emaildb
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - JAEGER_HOST=jaeger
+      - JAEGER_COLLECTOR_PORT=14268
+      - ENVIRONMENT=demo
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - email-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: api-gateway
+    container_name: demo-api-gateway
+    environment:
+      - PORT=8000
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - EMAIL_SERVICE_URL=http://email-service:8002
+      - SPAM_SERVICE_URL=http://spam-service:8003
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8004
+      - ATTACHMENT_SERVICE_URL=http://attachment-service:8005
+      - SEARCH_SERVICE_URL=http://search-service:8006
+      - JAEGER_HOST=jaeger
+      - JAEGER_COLLECTOR_PORT=14268
+      - ENVIRONMENT=demo
+    ports:
+      - "8000:8000"
+    depends_on:
+      auth-service:
+        condition: service_started
+      email-service:
+        condition: service_started
+      spam-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      attachment-service:
+        condition: service_started
+      search-service:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - email-network
+
+  # UI Service
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: demo-ui
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      api-gateway:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - email-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  elasticsearch_data:
+  minio_data:
+
+networks:
+  email-network:
+    driver: bridge
