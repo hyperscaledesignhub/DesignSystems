@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gaming Board Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Gaming Board API Test</h1>
+    
+    <div id="results"></div>
+    
+    <button onclick="testAPI()">Test API Connection</button>
+    <button onclick="testPopulate()">Test Populate Data</button>
+    <button onclick="testLeaderboard()">Test Leaderboard</button>
+    
+    <script>
+        const API_BASE = 'http://localhost:23455/api/v1';
+        const DEMO_API = 'http://localhost:23458/api/v1';
+        
+        function log(message) {
+            document.getElementById('results').innerHTML += '<p>' + message + '</p>';
+            console.log(message);
+        }
+        
+        async function testAPI() {
+            try {
+                log('Testing API connection...');
+                const response = await axios.get(API_BASE + '/games');
+                log('✅ Games API works: ' + JSON.stringify(response.data));
+            } catch (error) {
+                log('❌ Games API failed: ' + error.message);
+                console.error(error);
+            }
+        }
+        
+        async function testPopulate() {
+            try {
+                log('Testing populate data...');
+                const response = await axios.post(API_BASE + '/demo/populate', {
+                    users: 5,
+                    games: 2,
+                    tournaments: 1
+                });
+                log('✅ Populate works: ' + JSON.stringify(response.data));
+            } catch (error) {
+                log('❌ Populate failed: ' + error.message);
+                console.error(error);
+            }
+        }
+        
+        async function testLeaderboard() {
+            try {
+                log('Testing leaderboard...');
+                const response = await axios.get(API_BASE + '/leaderboard/global');
+                log('✅ Leaderboard works: Found ' + response.data.length + ' players');
+                log('Top player: ' + JSON.stringify(response.data[0]));
+            } catch (error) {
+                log('❌ Leaderboard failed: ' + error.message);
+                console.error(error);
+            }
+        }
+        
+        // Auto-test on page load
+        window.onload = function() {
+            log('Page loaded, starting auto-tests...');
+            setTimeout(testAPI, 1000);
+            setTimeout(testPopulate, 2000);
+            setTimeout(testLeaderboard, 3000);
+        }
+    </script>
+</body>
+</html>

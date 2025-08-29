@@ -1,0 +1,214 @@
+# Docker Compose file for Gaming Leaderboard Demo
+
+services:
+  # Infrastructure Services
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: gamingdb
+      POSTGRES_USER: gaming
+      POSTGRES_PASSWORD: gaming123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - gaming-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gaming"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - gaming-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # Collector HTTP endpoint
+      - "14250:14250"  # Collector gRPC endpoint
+      - "6831:6831/udp" # Agent UDP compact
+      - "6832:6832/udp" # Agent UDP binary
+    networks:
+      - gaming-network
+
+
+  # Core Services (simplified for demo)
+  # Using simple-gateway with in-memory storage instead of separate microservices
+
+  api-gateway:
+    build: services/simple-gateway
+    environment:
+      USER_SERVICE_URL: http://user-service:23451
+      WEBSOCKET_SERVICE_URL: http://websocket-service:23456
+      DEMO_SERVICE_URL: http://demo-generator:23458
+      TOURNAMENT_SERVICE_URL: http://tournament-service:23457
+      JWT_SECRET: your-secret-key-here
+      SERVICE_PORT: 23455
+      JAEGER_HOST: jaeger
+      ENVIRONMENT: demo
+    ports:
+      - "23455:23455"
+    depends_on:
+      - user-service
+      - websocket-service
+      - tournament-service
+    networks:
+      - gaming-network
+    restart: unless-stopped
+
+  # Demo Services
+  user-service:
+    build: 
+      context: services/user-service
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://gaming:gaming123@postgres:5432/gamingdb
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: demo-jwt-secret-key-change-in-production
+      SERVICE_PORT: 23451
+      JAEGER_HOST: jaeger
+      ENVIRONMENT: demo
+    ports:
+      - "23451:23451"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    networks:
+      - gaming-network
+    restart: unless-stopped
+
+  websocket-service:
+    build: 
+      context: services/websocket-service
+      dockerfile: Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379
+      SERVICE_PORT: 23456
+      JAEGER_HOST: jaeger
+      ENVIRONMENT: demo
+    ports:
+      - "23456:23456"
+    depends_on:
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    networks:
+      - gaming-network
+    restart: unless-stopped
+
+  tournament-service:
+    build: 
+      context: services/tournament-service
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://gaming:gaming123@postgres:5432/gamingdb
+      REDIS_URL: redis://redis:6379
+      SERVICE_PORT: 23457
+      JAEGER_HOST: jaeger
+      ENVIRONMENT: demo
+    ports:
+      - "23457:23457"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    networks:
+      - gaming-network
+    restart: unless-stopped
+
+  demo-generator:
+    build:
+      context: services/demo-generator
+      dockerfile: Dockerfile
+    environment:
+      API_GATEWAY_URL: http://api-gateway:23455
+      WEBSOCKET_URL: http://websocket-service:23456
+      SERVICE_PORT: 23458
+      JAEGER_HOST: jaeger
+      ENVIRONMENT: demo
+    ports:
+      - "23458:23458"
+    depends_on:
+      - websocket-service
+    networks:
+      - gaming-network
+    restart: unless-stopped
+
+  # UI Service
+  ui:
+    build:
+      context: ui
+      dockerfile: Dockerfile
+    environment:
+      API_GATEWAY_URL: http://localhost:23455
+      WEBSOCKET_URL: ws://localhost:23456
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - gaming-network
+    restart: unless-stopped
+
+  # Monitoring Services (simplified)
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - gaming-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - gaming-network
+    restart: unless-stopped
+
+networks:
+  gaming-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

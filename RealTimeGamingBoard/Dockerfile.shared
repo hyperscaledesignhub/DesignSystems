@@ -1,0 +1,9 @@
+FROM python:3.11-slim as shared
+
+WORKDIR /demo
+
+# Copy shared tracing module
+COPY shared /demo/shared
+
+# This is a build-only container
+CMD ["echo", "Shared context built"]
