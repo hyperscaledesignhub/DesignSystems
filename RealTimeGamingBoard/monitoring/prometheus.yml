@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:23451']
+
+  - job_name: 'game-service'
+    static_configs:
+      - targets: ['game-service:23452']
+
+  - job_name: 'leaderboard-service'
+    static_configs:
+      - targets: ['leaderboard-service:23453']
+
+  - job_name: 'score-service'
+    static_configs:
+      - targets: ['score-service:23454']
+
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:23455']
+
+  - job_name: 'websocket-service'
+    static_configs:
+      - targets: ['websocket-service:23456']
+
+  - job_name: 'tournament-service'
+    static_configs:
+      - targets: ['tournament-service:23457']
+
+  - job_name: 'demo-generator'
+    static_configs:
+      - targets: ['demo-generator:23458']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
