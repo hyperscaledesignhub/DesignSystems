@@ -1,0 +1,1 @@
+# Shared components for distributed email service
