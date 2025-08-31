@@ -1,0 +1,362 @@
+# Docker Compose Configuration for Payment System Demo
+
+services:
+  # Observability
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: demo-jaeger-1
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "6831:6831/udp"  # Agent UDP
+      - "6832:6832/udp"  # Agent UDP
+      - "14250:14250"  # gRPC
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=debug
+    networks:
+      - payment-network
+
+  # Infrastructure Services
+  postgres-payment:
+    image: postgres:15
+    container_name: demo-postgres-payment-1
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_pass
+    ports:
+      - "5439:5432"
+    volumes:
+      - postgres_payment_data:/var/lib/postgresql/data
+    networks:
+      - payment-network
+
+  postgres-ledger:
+    image: postgres:15
+    container_name: demo-postgres-ledger-1
+    environment:
+      POSTGRES_DB: ledger_db
+      POSTGRES_USER: ledger_user
+      POSTGRES_PASSWORD: ledger_pass
+    ports:
+      - "5440:5432"
+    volumes:
+      - postgres_ledger_data:/var/lib/postgresql/data
+    networks:
+      - payment-network
+
+  postgres-wallet:
+    image: postgres:15
+    container_name: demo-postgres-wallet-1
+    environment:
+      POSTGRES_DB: wallet_db
+      POSTGRES_USER: wallet_user
+      POSTGRES_PASSWORD: wallet_pass
+    ports:
+      - "5441:5432"
+    volumes:
+      - postgres_wallet_data:/var/lib/postgresql/data
+    networks:
+      - payment-network
+
+  postgres-fraud:
+    image: postgres:15
+    container_name: demo-postgres-fraud-1
+    environment:
+      POSTGRES_DB: fraud_db
+      POSTGRES_USER: fraud_user
+      POSTGRES_PASSWORD: fraud_pass
+    ports:
+      - "5442:5432"
+    volumes:
+      - postgres_fraud_data:/var/lib/postgresql/data
+    networks:
+      - payment-network
+
+  postgres-reconciliation:
+    image: postgres:15
+    container_name: demo-postgres-reconciliation-1
+    environment:
+      POSTGRES_DB: reconciliation_db
+      POSTGRES_USER: reconciliation_user
+      POSTGRES_PASSWORD: reconciliation_pass
+    ports:
+      - "5443:5432"
+    volumes:
+      - postgres_reconciliation_data:/var/lib/postgresql/data
+    networks:
+      - payment-network
+
+  postgres-notification:
+    image: postgres:15
+    container_name: demo-postgres-notification-1
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: notification_user
+      POSTGRES_PASSWORD: notification_pass
+    ports:
+      - "5444:5432"
+    volumes:
+      - postgres_notification_data:/var/lib/postgresql/data
+    networks:
+      - payment-network
+
+  redis-payment:
+    image: redis:7-alpine
+    container_name: demo-redis-payment-1
+    ports:
+      - "6385:6379"
+    volumes:
+      - redis_payment_data:/data
+    networks:
+      - payment-network
+
+  redis-wallet:
+    image: redis:7-alpine
+    container_name: demo-redis-wallet-1
+    ports:
+      - "6386:6379"
+    volumes:
+      - redis_wallet_data:/data
+    networks:
+      - payment-network
+
+  redis-fraud:
+    image: redis:7-alpine
+    container_name: demo-redis-fraud-1
+    ports:
+      - "6387:6379"
+    volumes:
+      - redis_fraud_data:/data
+    networks:
+      - payment-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: demo-rabbitmq-1
+    ports:
+      - "5678:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - payment-network
+
+  # Core Payment Services (from existing setup)
+  payment-service:
+    build: 
+      context: ../
+      dockerfile: services/payment-service/Dockerfile
+    container_name: demo-payment-service-1
+    ports:
+      - "8734:8734"
+    environment:
+      - DATABASE_URL=postgresql://payment_user:payment_pass@postgres-payment:5432/payment_db
+      - REDIS_URL=redis://redis-payment:6379
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - LEDGER_SERVICE_URL=http://ledger-service:8736
+      - FRAUD_SERVICE_URL=http://fraud-detection-service:8742
+      - WALLET_SERVICE_URL=http://wallet-service:8740
+      - JAEGER_HOST=jaeger
+    volumes:
+      - ../services/payment-service:/app
+    depends_on:
+      - postgres-payment
+      - redis-payment
+      - rabbitmq
+      - jaeger
+    networks:
+      - payment-network
+
+  payment-executor:
+    build: 
+      context: ../
+      dockerfile: services/payment-executor/Dockerfile
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - PSP_GATEWAY_URL=http://psp-gateway:8738
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8743
+      - JAEGER_HOST=jaeger
+    volumes:
+      - ../services/payment-executor:/app
+    depends_on:
+      - rabbitmq
+      - psp-gateway
+      - jaeger
+    networks:
+      - payment-network
+
+  ledger-service:
+    build: 
+      context: ../
+      dockerfile: services/ledger-service/Dockerfile
+    container_name: demo-ledger-service-1
+    ports:
+      - "8736:8736"
+    environment:
+      - DATABASE_URL=postgresql://ledger_user:ledger_pass@postgres-ledger:5432/ledger_db
+      - JAEGER_HOST=jaeger
+    volumes:
+      - ../services/ledger-service:/app
+    depends_on:
+      - postgres-ledger
+      - jaeger
+    networks:
+      - payment-network
+
+  psp-gateway:
+    build: 
+      context: ../
+      dockerfile: services/psp-gateway/Dockerfile
+    container_name: demo-psp-gateway-1
+    ports:
+      - "8738:8738"
+    environment:
+      - JAEGER_HOST=jaeger
+    volumes:
+      - ../services/psp-gateway:/app
+    depends_on:
+      - postgres-payment
+      - jaeger
+    networks:
+      - payment-network
+
+  api-gateway:
+    build: 
+      context: ../
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: demo-api-gateway-1
+    ports:
+      - "8733:8733"
+    environment:
+      - PAYMENT_SERVICE_URL=http://payment-service:8734
+      - LEDGER_SERVICE_URL=http://ledger-service:8736
+      - WALLET_SERVICE_URL=http://wallet-service:8740
+      - FRAUD_SERVICE_URL=http://fraud-detection-service:8742
+      - RECONCILIATION_SERVICE_URL=http://reconciliation-service:8741
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8743
+      - JAEGER_HOST=jaeger
+    depends_on:
+      - payment-service
+      - ledger-service
+      - wallet-service
+      - jaeger
+    networks:
+      - payment-network
+
+  # New Enhanced Services  
+  wallet-service:
+    build:
+      context: ./services/wallet-service
+    container_name: demo-wallet-service-1
+    ports:
+      - "8740:8740"
+    environment:
+      - DATABASE_URL=postgresql://wallet_user:wallet_pass@postgres-wallet:5432/wallet_db
+      - REDIS_URL=redis://redis-wallet:6379
+      - JAEGER_HOST=jaeger
+    volumes:
+      - ./tracing.py:/app/tracing.py
+    depends_on:
+      - postgres-wallet
+      - redis-wallet
+      - jaeger
+    networks:
+      - payment-network
+
+  reconciliation-service:
+    build:
+      context: ./services/reconciliation-service
+    container_name: demo-reconciliation-service-1
+    ports:
+      - "8741:8741"
+    environment:
+      - DATABASE_URL=postgresql://reconciliation_user:reconciliation_pass@postgres-reconciliation:5432/reconciliation_db
+      - PAYMENT_SERVICE_URL=http://payment-service:8734
+      - LEDGER_SERVICE_URL=http://ledger-service:8736
+      - PSP_GATEWAY_URL=http://psp-gateway:8738
+      - WALLET_SERVICE_URL=http://wallet-service:8740
+      - JAEGER_HOST=jaeger
+    volumes:
+      - ./tracing.py:/app/tracing.py
+    depends_on:
+      - postgres-reconciliation
+      - jaeger
+    networks:
+      - payment-network
+
+  fraud-detection-service:
+    build:
+      context: ./services/fraud-detection-service  
+    container_name: demo-fraud-detection-service-1
+    ports:
+      - "8742:8742"
+    environment:
+      - DATABASE_URL=postgresql://fraud_user:fraud_pass@postgres-fraud:5432/fraud_db
+      - REDIS_URL=redis://redis-fraud:6379
+      - PAYMENT_SERVICE_URL=http://payment-service:8734
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8743
+      - JAEGER_HOST=jaeger
+    volumes:
+      - ./tracing.py:/app/tracing.py
+    depends_on:
+      - postgres-fraud
+      - redis-fraud
+      - jaeger
+    networks:
+      - payment-network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+    container_name: demo-notification-service-1
+    ports:
+      - "8743:8004"
+    environment:
+      - DATABASE_URL=postgresql://notification_user:notification_pass@postgres-notification:5432/notification_db
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - JAEGER_HOST=jaeger
+    volumes:
+      - ./tracing.py:/app/tracing.py
+    depends_on:
+      - postgres-notification
+      - rabbitmq
+      - jaeger
+    networks:
+      - payment-network
+
+  # UI Dashboard
+  payment-dashboard:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    container_name: demo-payment-dashboard-1
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_GATEWAY=http://localhost:8733
+      - REACT_APP_WS_URL=ws://localhost:8743/ws
+    depends_on:
+      - api-gateway
+    networks:
+      - payment-network
+
+volumes:
+  postgres_payment_data:
+  postgres_ledger_data:
+  postgres_wallet_data:
+  postgres_fraud_data:
+  postgres_reconciliation_data:
+  postgres_notification_data:
+  redis_payment_data:
+  redis_wallet_data:
+  redis_fraud_data:
+  rabbitmq_data:
+
+networks:
+  payment-network:
+    driver: bridge
