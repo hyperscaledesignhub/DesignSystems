@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bucket-service
+  namespace: s3-storage
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bucket-service
+  template:
+    metadata:
+      labels:
+        app: bucket-service
+    spec:
+      containers:
+      - name: bucket-service
+        image: s3-bucket-service:latest
+        ports:
+        - containerPort: 7861
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://postgres:password@postgresql-service:5432/s3_buckets"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 7861
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 7861
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bucket-service
+  namespace: s3-storage
+spec:
+  selector:
+    app: bucket-service
+  ports:
+  - port: 7861
+    targetPort: 7861
+    protocol: TCP
+  type: ClusterIP
