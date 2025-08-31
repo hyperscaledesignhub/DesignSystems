@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgresql:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: s3_buckets
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Identity Service
+  identity-service:
+    build: ./services/identity
+    ports:
+      - "7851:7851"
+    volumes:
+      - identity_data:/data
+    environment:
+      - DB_PATH=/data/identity.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7851/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Bucket Service
+  bucket-service:
+    build: ./services/bucket
+    ports:
+      - "7861:7861"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgresql:5432/s3_buckets
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7861/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Storage Service
+  storage-service:
+    build: ./services/storage
+    ports:
+      - "7881:7881"
+    volumes:
+      - storage_data:/data
+    environment:
+      - STORAGE_ROOT=/data/storage
+      - DB_PATH=/data/storage.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7881/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Metadata Service
+  metadata-service:
+    build: ./services/metadata
+    ports:
+      - "7891:7891"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgresql:5432/s3_metadata
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7891/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Object Service
+  object-service:
+    build: ./services/object
+    ports:
+      - "7871:7871"
+    depends_on:
+      bucket-service:
+        condition: service_healthy
+      storage-service:
+        condition: service_healthy
+      metadata-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7871/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Gateway
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "7841:7841"
+      - "80:7841"  # Also expose on port 80
+    depends_on:
+      identity-service:
+        condition: service_healthy
+      bucket-service:
+        condition: service_healthy
+      object-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7841/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  identity_data:
+  storage_data:

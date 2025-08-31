@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Buckets - S3 Storage System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-bucket"></i>
+                Your Buckets
+            </h1>
+            <button class="btn btn-primary" onclick="showCreateBucketModal()">
+                <i class="bi bi-plus-circle"></i>
+                Create Bucket
+            </button>
+        </div>
+    </div>
+</div>
+
+{% if buckets %}
+<div class="row">
+    {% for bucket in buckets %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 bucket-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title">
+                        <i class="bi bi-bucket text-primary"></i>
+                        {{ bucket.bucket_name }}
+                    </h5>
+                    <div class="dropdown">
+                        <button 
+                            class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                            type="button" 
+                            data-bs-toggle="dropdown"
+                        >
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a 
+                                    class="dropdown-item" 
+                                    href="{{ url_for('bucket_detail', bucket_name=bucket.bucket_name) }}"
+                                >
+                                    <i class="bi bi-folder-open"></i>
+                                    Open Bucket
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button 
+                                    class="dropdown-item text-danger" 
+                                    onclick="deleteBucket('{{ bucket.bucket_name }}')"
+                                >
+                                    <i class="bi bi-trash"></i>
+                                    Delete Bucket
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <small class="text-muted">
+                        <i class="bi bi-calendar"></i>
+                        Created: {{ bucket.created_at | datetime }}
+                    </small>
+                    <br>
+                    <small class="text-muted">
+                        <i class="bi bi-person"></i>
+                        Owner: {{ bucket.owner_id }}
+                    </small>
+                </div>
+                
+                <div class="d-grid">
+                    <a 
+                        href="{{ url_for('bucket_detail', bucket_name=bucket.bucket_name) }}" 
+                        class="btn btn-primary"
+                    >
+                        <i class="bi bi-folder-open"></i>
+                        Open Bucket
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="row">
+    <div class="col">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-bucket text-muted" style="font-size: 4rem;"></i>
+                <h3 class="text-muted mt-3">No buckets found</h3>
+                <p class="text-muted">You haven't created any buckets yet. Create your first bucket to start storing files.</p>
+                <button class="btn btn-primary btn-lg" onclick="showCreateBucketModal()">
+                    <i class="bi bi-plus-circle"></i>
+                    Create Your First Bucket
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Create Bucket Modal -->
+<div class="modal fade" id="createBucketModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i>
+                    Create New Bucket
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createBucketForm">
+                    <div class="mb-3">
+                        <label for="bucketName" class="form-label">Bucket Name</label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="bucketName" 
+                            name="bucket_name"
+                            placeholder="my-new-bucket"
+                            pattern="[a-z0-9-]+"
+                            minlength="3"
+                            maxlength="63"
+                            required
+                        >
+                        <div class="form-text">
+                            <ul class="mb-0">
+                                <li>3-63 characters long</li>
+                                <li>Lowercase letters, numbers, and hyphens only</li>
+                                <li>Must start and end with a letter or number</li>
+                                <li>Must be globally unique</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Note:</strong> Bucket names are globally unique and cannot be changed after creation.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createBucket()">
+                    <i class="bi bi-plus-circle"></i>
+                    Create Bucket
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function showCreateBucketModal() {
+    document.getElementById('bucketName').value = '';
+    new bootstrap.Modal(document.getElementById('createBucketModal')).show();
+}
+
+async function createBucket() {
+    const form = document.getElementById('createBucketForm');
+    const formData = new FormData(form);
+    const bucketName = formData.get('bucket_name');
+    
+    if (!bucketName) {
+        showAlert('Please enter a bucket name', 'error');
+        return;
+    }
+    
+    // Validate bucket name
+    const bucketNameRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
+    if (!bucketNameRegex.test(bucketName)) {
+        showAlert('Invalid bucket name. Please follow the naming rules.', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/buckets/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ bucket_name: bucketName })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(result.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert(result.message, 'error');
+        }
+    } catch (error) {
+        showAlert('Error creating bucket: ' + error.message, 'error');
+    }
+    
+    bootstrap.Modal.getInstance(document.getElementById('createBucketModal')).hide();
+}
+
+async function deleteBucket(bucketName) {
+    if (!confirm(`Are you sure you want to delete bucket "${bucketName}"?\n\nThis action cannot be undone and will delete all objects in the bucket.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/buckets/${bucketName}/delete`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(result.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert(result.message, 'error');
+        }
+    } catch (error) {
+        showAlert('Error deleting bucket: ' + error.message, 'error');
+    }
+}
+</script>
+{% endblock %}

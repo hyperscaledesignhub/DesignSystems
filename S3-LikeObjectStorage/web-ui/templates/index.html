@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - S3 Storage System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col">
+        <h1 class="mb-4">
+            <i class="bi bi-speedometer2"></i>
+            Storage Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h2 class="card-title">{{ stats.total_buckets }}</h2>
+                        <p class="card-text">Total Buckets</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-bucket" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h2 class="card-title">{{ stats.total_objects }}</h2>
+                        <p class="card-text">Total Objects</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-files" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h2 class="card-title">{{ stats.total_size }}</h2>
+                        <p class="card-text">Total Storage</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-hdd" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-lightning"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <button 
+                            class="btn btn-primary btn-lg w-100 mb-3" 
+                            onclick="showCreateBucketModal()"
+                        >
+                            <i class="bi bi-plus-circle"></i>
+                            Create New Bucket
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ url_for('buckets') }}" class="btn btn-outline-primary btn-lg w-100 mb-3">
+                            <i class="bi bi-eye"></i>
+                            View All Buckets
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Buckets -->
+<div class="row">
+    <div class="col">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-bucket"></i>
+                    Your Buckets
+                </h5>
+                <a href="{{ url_for('buckets') }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body">
+                {% if buckets %}
+                <div class="row">
+                    {% for bucket in buckets[:6] %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 bucket-card">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="bi bi-bucket text-primary"></i>
+                                    {{ bucket.bucket_name }}
+                                </h6>
+                                <p class="card-text small text-muted">
+                                    Created: {{ bucket.created_at | datetime }}
+                                </p>
+                                <div class="d-flex gap-2">
+                                    <a 
+                                        href="{{ url_for('bucket_detail', bucket_name=bucket.bucket_name) }}" 
+                                        class="btn btn-sm btn-primary"
+                                    >
+                                        <i class="bi bi-folder-open"></i>
+                                        Open
+                                    </a>
+                                    <button 
+                                        class="btn btn-sm btn-outline-danger"
+                                        onclick="deleteBucket('{{ bucket.bucket_name }}')"
+                                    >
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-bucket text-muted" style="font-size: 3rem;"></i>
+                    <h5 class="text-muted mt-3">No buckets yet</h5>
+                    <p class="text-muted">Create your first bucket to start storing files</p>
+                    <button class="btn btn-primary" onclick="showCreateBucketModal()">
+                        <i class="bi bi-plus-circle"></i>
+                        Create First Bucket
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Bucket Modal -->
+<div class="modal fade" id="createBucketModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i>
+                    Create New Bucket
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createBucketForm">
+                    <div class="mb-3">
+                        <label for="bucketName" class="form-label">Bucket Name</label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="bucketName" 
+                            name="bucket_name"
+                            placeholder="my-awesome-bucket"
+                            pattern="[a-z0-9-]+"
+                            minlength="3"
+                            maxlength="63"
+                            required
+                        >
+                        <div class="form-text">
+                            Bucket name must be 3-63 characters, lowercase letters, numbers, and hyphens only
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createBucket()">
+                    <i class="bi bi-plus-circle"></i>
+                    Create Bucket
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function showCreateBucketModal() {
+    new bootstrap.Modal(document.getElementById('createBucketModal')).show();
+}
+
+async function createBucket() {
+    const form = document.getElementById('createBucketForm');
+    const formData = new FormData(form);
+    const bucketName = formData.get('bucket_name');
+    
+    if (!bucketName) {
+        showAlert('Please enter a bucket name', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/buckets/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ bucket_name: bucketName })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(result.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert(result.message, 'error');
+        }
+    } catch (error) {
+        showAlert('Error creating bucket: ' + error.message, 'error');
+    }
+    
+    bootstrap.Modal.getInstance(document.getElementById('createBucketModal')).hide();
+}
+
+async function deleteBucket(bucketName) {
+    if (!confirm(`Are you sure you want to delete bucket "${bucketName}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/buckets/${bucketName}/delete`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(result.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert(result.message, 'error');
+        }
+    } catch (error) {
+        showAlert('Error deleting bucket: ' + error.message, 'error');
+    }
+}
+</script>
+{% endblock %}

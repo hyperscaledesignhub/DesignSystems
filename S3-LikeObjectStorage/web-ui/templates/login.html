@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Login - S3 Storage System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <i class="bi bi-cloud-arrow-up text-primary" style="font-size: 3rem;"></i>
+                    <h2 class="card-title">S3 Storage System</h2>
+                    <p class="text-muted">Enter your API key to access your storage</p>
+                </div>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="api_key" class="form-label">API Key</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-key"></i>
+                            </span>
+                            <input 
+                                type="password" 
+                                class="form-control" 
+                                id="api_key" 
+                                name="api_key" 
+                                placeholder="s3_key_..."
+                                required
+                            >
+                            <button 
+                                type="button" 
+                                class="btn btn-outline-secondary" 
+                                onclick="togglePassword()"
+                                id="toggleBtn"
+                            >
+                                <i class="bi bi-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Get your API key from the identity service logs or admin
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        Login
+                    </button>
+                </form>
+
+                <hr class="my-4">
+
+                <div class="text-center">
+                    <h6 class="text-muted">Getting Started</h6>
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <i class="bi bi-bucket text-info"></i>
+                            <div class="small">Create Buckets</div>
+                        </div>
+                        <div class="col-4">
+                            <i class="bi bi-cloud-upload text-success"></i>
+                            <div class="small">Upload Files</div>
+                        </div>
+                        <div class="col-4">
+                            <i class="bi bi-download text-warning"></i>
+                            <div class="small">Download Files</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Key Help -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i>
+                How to get your API Key
+            </div>
+            <div class="card-body">
+                <div class="small">
+                    <p><strong>Docker Compose:</strong></p>
+                    <code>docker-compose logs identity-service | grep "Admin API Key"</code>
+                    
+                    <p class="mt-2"><strong>Kubernetes:</strong></p>
+                    <code>kubectl logs -n s3-storage -l app=identity-service | grep "Admin API Key"</code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function togglePassword() {
+    const passwordField = document.getElementById('api_key');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        toggleIcon.className = 'bi bi-eye-slash';
+    } else {
+        passwordField.type = 'password';
+        toggleIcon.className = 'bi bi-eye';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,626 @@
+{% extends "base.html" %}
+
+{% block title %}{{ bucket_name }} - S3 Storage System{% endblock %}
+
+{% block content %}
+<!-- Bucket Header -->
+<div class="row mb-4">
+    <div class="col">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('buckets') }}">Buckets</a></li>
+                <li class="breadcrumb-item active">{{ bucket_name }}</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>
+                <i class="bi bi-bucket text-primary"></i>
+                {{ bucket_name }}
+            </h1>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="showUploadModal()">
+                    <i class="bi bi-cloud-upload"></i>
+                    Upload Files
+                </button>
+                <button class="btn btn-outline-secondary" onclick="showCreateFolderModal()">
+                    <i class="bi bi-folder-plus"></i>
+                    New Folder
+                </button>
+                <button class="btn btn-outline-info" onclick="refreshBucket()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Folder Navigation -->
+<div class="row mb-3">
+    <div class="col">
+        <div class="card">
+            <div class="card-body py-2">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-folder text-warning me-2"></i>
+                    <span class="me-2">Path:</span>
+                    <nav aria-label="folder-breadcrumb">
+                        <ol class="breadcrumb mb-0" id="folderBreadcrumb">
+                            <li class="breadcrumb-item">
+                                <a href="#" onclick="navigateToFolder('')">
+                                    <i class="bi bi-house"></i> Root
+                                </a>
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter -->
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="bi bi-search"></i>
+            </span>
+            <input 
+                type="text" 
+                class="form-control" 
+                id="searchInput" 
+                placeholder="Search objects..."
+                onkeyup="filterObjects()"
+            >
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="btn-group w-100">
+            <button class="btn btn-outline-secondary" onclick="setViewMode('grid')" id="gridViewBtn">
+                <i class="bi bi-grid"></i> Grid
+            </button>
+            <button class="btn btn-outline-secondary active" onclick="setViewMode('list')" id="listViewBtn">
+                <i class="bi bi-list"></i> List
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Objects List -->
+<div class="row">
+    <div class="col">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-files"></i>
+                        Objects ({{ objects|length }})
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" onclick="selectAll()">
+                            <i class="bi bi-check-all"></i> Select All
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteSelected()" id="deleteSelectedBtn" disabled>
+                            <i class="bi bi-trash"></i> Delete Selected
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if objects %}
+                <!-- List View -->
+                <div class="table-responsive" id="listView">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                                </th>
+                                <th>Name</th>
+                                <th>Size</th>
+                                <th>Modified</th>
+                                <th width="120">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for folder in folders %}
+                            <tr class="object-row folder-row">
+                                <td></td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-folder-fill text-warning me-2"></i>
+                                        <a href="#" onclick="navigateToFolder('{{ folder }}')" class="text-decoration-none">
+                                            {{ folder.split('/')[-1] }}/
+                                        </a>
+                                    </div>
+                                </td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td></td>
+                            </tr>
+                            {% endfor %}
+                            
+                            {% for object in objects %}
+                            <tr class="object-row file-row" data-name="{{ object.object_name }}">
+                                <td>
+                                    <input 
+                                        type="checkbox" 
+                                        class="object-checkbox" 
+                                        value="{{ object.object_name }}"
+                                        onchange="updateDeleteButton()"
+                                    >
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-file-earmark{{ '-text' if object.file_extension in ['.txt', '.md'] else '-code' if object.file_extension in ['.js', '.py', '.html'] else '' }} text-info me-2"></i>
+                                        <span>{{ object.object_name.split('/')[-1] }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ object.formatted_size }}</td>
+                                <td>{{ object.formatted_date }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a 
+                                            href="{{ url_for('download_object', bucket_name=bucket_name, object_key=object.object_name) }}" 
+                                            class="btn btn-outline-primary btn-sm"
+                                            title="Download"
+                                        >
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <button 
+                                            class="btn btn-outline-danger btn-sm"
+                                            onclick="deleteObject('{{ object.object_name }}')"
+                                            title="Delete"
+                                        >
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Grid View -->
+                <div class="p-3 d-none" id="gridView">
+                    <div class="row">
+                        {% for folder in folders %}
+                        <div class="col-md-3 col-lg-2 mb-3">
+                            <div class="card h-100 folder-card" onclick="navigateToFolder('{{ folder }}')">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-folder-fill text-warning" style="font-size: 2rem;"></i>
+                                    <div class="mt-2 small">{{ folder.split('/')[-1] }}/</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        {% for object in objects %}
+                        <div class="col-md-3 col-lg-2 mb-3">
+                            <div class="card h-100 object-card">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-file-earmark{{ '-text' if object.file_extension in ['.txt', '.md'] else '-code' if object.file_extension in ['.js', '.py', '.html'] else '' }} text-info" style="font-size: 2rem;"></i>
+                                    <div class="mt-2 small">{{ object.object_name.split('/')[-1] }}</div>
+                                    <div class="small text-muted">{{ object.formatted_size }}</div>
+                                </div>
+                                <div class="card-footer p-2">
+                                    <div class="btn-group w-100">
+                                        <a 
+                                            href="{{ url_for('download_object', bucket_name=bucket_name, object_key=object.object_name) }}" 
+                                            class="btn btn-sm btn-primary"
+                                        >
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <button 
+                                            class="btn btn-sm btn-outline-danger"
+                                            onclick="deleteObject('{{ object.object_name }}')"
+                                        >
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-files text-muted" style="font-size: 3rem;"></i>
+                    <h5 class="text-muted mt-3">No objects found</h5>
+                    <p class="text-muted">This bucket is empty. Upload your first file to get started.</p>
+                    <button class="btn btn-primary" onclick="showUploadModal()">
+                        <i class="bi bi-cloud-upload"></i>
+                        Upload Files
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-cloud-upload"></i>
+                    Upload Files
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="folderPath" class="form-label">Upload to folder (optional)</label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="folderPath" 
+                            name="folder_path"
+                            placeholder="folder/subfolder"
+                        >
+                        <div class="form-text">Leave empty to upload to root folder</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="fileInput" class="form-label">Select Files</label>
+                        <input 
+                            type="file" 
+                            class="form-control" 
+                            id="fileInput" 
+                            name="file"
+                            multiple
+                            onchange="showSelectedFiles()"
+                        >
+                        <div class="form-text">You can select multiple files. Maximum file size: 100MB</div>
+                    </div>
+                    
+                    <div id="selectedFiles" class="mb-3 d-none">
+                        <h6>Selected Files:</h6>
+                        <div id="filesList"></div>
+                    </div>
+                    
+                    <div id="uploadProgress" class="d-none">
+                        <div class="progress mb-2">
+                            <div 
+                                class="progress-bar" 
+                                role="progressbar" 
+                                style="width: 0%" 
+                                id="progressBar"
+                            ></div>
+                        </div>
+                        <div id="uploadStatus"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="uploadFiles()" id="uploadBtn">
+                    <i class="bi bi-cloud-upload"></i>
+                    Upload Files
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Folder Modal -->
+<div class="modal fade" id="createFolderModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-folder-plus"></i>
+                    Create New Folder
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createFolderForm">
+                    <div class="mb-3">
+                        <label for="folderName" class="form-label">Folder Name</label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="folderName" 
+                            name="folder_name"
+                            placeholder="new-folder"
+                            required
+                        >
+                        <div class="form-text">Folder will be created by uploading an empty placeholder file</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createFolder()">
+                    <i class="bi bi-folder-plus"></i>
+                    Create Folder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentFolder = '';
+
+function showUploadModal() {
+    document.getElementById('uploadForm').reset();
+    document.getElementById('selectedFiles').classList.add('d-none');
+    document.getElementById('uploadProgress').classList.add('d-none');
+    document.getElementById('folderPath').value = currentFolder;
+    new bootstrap.Modal(document.getElementById('uploadModal')).show();
+}
+
+function showCreateFolderModal() {
+    document.getElementById('createFolderForm').reset();
+    new bootstrap.Modal(document.getElementById('createFolderModal')).show();
+}
+
+function showSelectedFiles() {
+    const fileInput = document.getElementById('fileInput');
+    const selectedFiles = document.getElementById('selectedFiles');
+    const filesList = document.getElementById('filesList');
+    
+    if (fileInput.files.length > 0) {
+        selectedFiles.classList.remove('d-none');
+        filesList.innerHTML = '';
+        
+        Array.from(fileInput.files).forEach(file => {
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'alert alert-info py-2';
+            fileDiv.innerHTML = `
+                <i class="bi bi-file-earmark"></i>
+                ${file.name} (${formatFileSize(file.size)})
+            `;
+            filesList.appendChild(fileDiv);
+        });
+    } else {
+        selectedFiles.classList.add('d-none');
+    }
+}
+
+async function uploadFiles() {
+    const fileInput = document.getElementById('fileInput');
+    const folderPath = document.getElementById('folderPath').value;
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const uploadBtn = document.getElementById('uploadBtn');
+    
+    if (fileInput.files.length === 0) {
+        showAlert('Please select files to upload', 'error');
+        return;
+    }
+    
+    uploadProgress.classList.remove('d-none');
+    uploadBtn.disabled = true;
+    
+    const files = Array.from(fileInput.files);
+    let uploadedCount = 0;
+    
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder_path', folderPath);
+        
+        uploadStatus.textContent = `Uploading ${file.name}... (${i + 1}/${files.length})`;
+        
+        try {
+            const response = await fetch(`/buckets/{{ bucket_name }}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                uploadedCount++;
+            } else {
+                showAlert(`Failed to upload ${file.name}: ${result.message}`, 'error');
+            }
+        } catch (error) {
+            showAlert(`Error uploading ${file.name}: ${error.message}`, 'error');
+        }
+        
+        const progress = ((i + 1) / files.length) * 100;
+        progressBar.style.width = progress + '%';
+    }
+    
+    uploadStatus.textContent = `Upload complete! ${uploadedCount}/${files.length} files uploaded successfully.`;
+    uploadBtn.disabled = false;
+    
+    if (uploadedCount > 0) {
+        setTimeout(() => {
+            bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+            location.reload();
+        }, 2000);
+    }
+}
+
+async function createFolder() {
+    const folderName = document.getElementById('folderName').value.trim();
+    
+    if (!folderName) {
+        showAlert('Please enter a folder name', 'error');
+        return;
+    }
+    
+    // Create folder by uploading a placeholder file
+    const folderPath = currentFolder ? `${currentFolder}/${folderName}` : folderName;
+    const formData = new FormData();
+    
+    // Create a small placeholder file
+    const placeholderFile = new Blob([''], { type: 'text/plain' });
+    formData.append('file', placeholderFile, '.keep');
+    formData.append('folder_path', folderPath);
+    
+    try {
+        const response = await fetch(`/buckets/{{ bucket_name }}/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(`Folder "${folderName}" created successfully`, 'success');
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('createFolderModal')).hide();
+                location.reload();
+            }, 1000);
+        } else {
+            showAlert(`Failed to create folder: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        showAlert(`Error creating folder: ${error.message}`, 'error');
+    }
+}
+
+async function deleteObject(objectKey) {
+    if (!confirm(`Are you sure you want to delete "${objectKey}"?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/buckets/{{ bucket_name }}/objects/${encodeURIComponent(objectKey)}/delete`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert(result.message, 'success');
+            location.reload();
+        } else {
+            showAlert(result.message, 'error');
+        }
+    } catch (error) {
+        showAlert('Error deleting object: ' + error.message, 'error');
+    }
+}
+
+function refreshBucket() {
+    location.reload();
+}
+
+function setViewMode(mode) {
+    const listView = document.getElementById('listView');
+    const gridView = document.getElementById('gridView');
+    const listBtn = document.getElementById('listViewBtn');
+    const gridBtn = document.getElementById('gridViewBtn');
+    
+    if (mode === 'list') {
+        listView.classList.remove('d-none');
+        gridView.classList.add('d-none');
+        listBtn.classList.add('active');
+        gridBtn.classList.remove('active');
+    } else {
+        listView.classList.add('d-none');
+        gridView.classList.remove('d-none');
+        gridBtn.classList.add('active');
+        listBtn.classList.remove('active');
+    }
+}
+
+function filterObjects() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.object-row');
+    
+    rows.forEach(row => {
+        const name = row.getAttribute('data-name') || row.textContent;
+        if (name.toLowerCase().includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const objectCheckboxes = document.querySelectorAll('.object-checkbox');
+    
+    objectCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    
+    updateDeleteButton();
+}
+
+function selectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    selectAllCheckbox.checked = true;
+    toggleSelectAll();
+}
+
+function updateDeleteButton() {
+    const checkedBoxes = document.querySelectorAll('.object-checkbox:checked');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    deleteBtn.disabled = checkedBoxes.length === 0;
+}
+
+async function deleteSelected() {
+    const checkedBoxes = document.querySelectorAll('.object-checkbox:checked');
+    const objectKeys = Array.from(checkedBoxes).map(cb => cb.value);
+    
+    if (objectKeys.length === 0) {
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete ${objectKeys.length} selected objects?`)) {
+        return;
+    }
+    
+    let deletedCount = 0;
+    
+    for (const objectKey of objectKeys) {
+        try {
+            const response = await fetch(`/buckets/{{ bucket_name }}/objects/${encodeURIComponent(objectKey)}/delete`, {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                deletedCount++;
+            }
+        } catch (error) {
+            console.error('Error deleting object:', error);
+        }
+    }
+    
+    showAlert(`Deleted ${deletedCount}/${objectKeys.length} objects`, 'success');
+    location.reload();
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function navigateToFolder(folderPath) {
+    // This would typically update the URL and reload with folder filter
+    // For now, we'll just reload the page
+    const url = new URL(window.location);
+    if (folderPath) {
+        url.searchParams.set('prefix', folderPath + '/');
+    } else {
+        url.searchParams.delete('prefix');
+    }
+    window.location = url;
+}
+</script>
+{% endblock %}
