@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cache-warmer
+  namespace: proximity-service
+spec:
+  schedule: "0 */6 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cache-warmer
+            image: proximity/cache-warmer:latest
+            env:
+            - name: DATABASE_URL
+              value: "postgresql://postgres:password@postgres-primary:5832/proximity_db"
+            - name: REDIS_HOST
+              value: "redis-cache-0.redis-cache.proximity-service.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6739"
+            resources:
+              requests:
+                cpu: 200m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+          restartPolicy: OnFailure

@@ -1,0 +1,174 @@
+version: '3.8'
+
+services:
+  postgres-primary:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: password
+      PGPORT: 5832
+      POSTGRES_USER: postgres
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replica_password
+    ports:
+      - "5832:5832"
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./services/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./services/database/primary-setup.sh:/docker-entrypoint-initdb.d/primary-setup.sh
+    command: postgres -p 5832 -c wal_level=replica -c max_wal_senders=10 -c max_replication_slots=10 -c hot_standby=on
+
+  postgres-replica1:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: password
+      PGPORT: 5833
+      PGUSER: postgres
+      POSTGRES_PRIMARY_HOST: postgres-primary
+      POSTGRES_PRIMARY_PORT: 5832
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replica_password
+    ports:
+      - "5833:5833"
+    volumes:
+      - postgres_replica1_data:/var/lib/postgresql/data
+      - ./services/database/replica-setup.sh:/docker-entrypoint-initdb.d/replica-setup.sh
+    depends_on:
+      - postgres-primary
+    command: postgres -p 5833
+
+  postgres-replica2:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: password
+      PGPORT: 5834
+      PGUSER: postgres
+      POSTGRES_PRIMARY_HOST: postgres-primary
+      POSTGRES_PRIMARY_PORT: 5832
+      POSTGRES_REPLICATION_USER: replicator
+      POSTGRES_REPLICATION_PASSWORD: replica_password
+    ports:
+      - "5834:5834"
+    volumes:
+      - postgres_replica2_data:/var/lib/postgresql/data
+      - ./services/database/replica-setup.sh:/docker-entrypoint-initdb.d/replica-setup.sh
+    depends_on:
+      - postgres-primary
+    command: postgres -p 5834
+
+  redis-master:
+    image: redis:7-alpine
+    ports:
+      - "6739:6739"
+    command: redis-server --port 6739 --maxmemory 2gb --maxmemory-policy allkeys-lru --save 60 1000
+    volumes:
+      - redis_master_data:/data
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
+  redis-sentinel1:
+    image: redis:7-alpine
+    ports:
+      - "26379:26379"
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./services/cache/sentinel.conf:/etc/redis/sentinel.conf
+    depends_on:
+      - redis-master
+
+  redis-sentinel2:
+    image: redis:7-alpine
+    ports:
+      - "26380:26380"
+    command: redis-sentinel /etc/redis/sentinel2.conf
+    volumes:
+      - ./services/cache/sentinel2.conf:/etc/redis/sentinel2.conf
+    depends_on:
+      - redis-master
+
+  redis-sentinel3:
+    image: redis:7-alpine
+    ports:
+      - "26381:26381"
+    command: redis-sentinel /etc/redis/sentinel3.conf
+    volumes:
+      - ./services/cache/sentinel3.conf:/etc/redis/sentinel3.conf
+    depends_on:
+      - redis-master
+
+  redis-replica1:
+    image: redis:7-alpine
+    ports:
+      - "6740:6740"
+    command: redis-server --port 6740 --replicaof redis-master 6739 --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_replica1_data:/data
+    depends_on:
+      - redis-master
+    environment:
+      - REDIS_REPLICATION_MODE=slave
+
+  redis-replica2:
+    image: redis:7-alpine
+    ports:
+      - "6741:6741"
+    command: redis-server --port 6741 --replicaof redis-master 6739 --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_replica2_data:/data
+    depends_on:
+      - redis-master
+    environment:
+      - REDIS_REPLICATION_MODE=slave
+
+  location-service:
+    build: ./services/location-service
+    ports:
+      - "8921:8921"
+    depends_on:
+      - redis-master
+    environment:
+      - REDIS_HOST=redis-master
+      - REDIS_PORT=6739
+
+  business-service:
+    build: ./services/business-service
+    ports:
+      - "9823:9823"
+    depends_on:
+      - postgres-primary
+      - redis-master
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres-primary:5832/proximity_db
+      - REDIS_HOST=redis-master
+      - REDIS_PORT=6739
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "7891:7891"
+    depends_on:
+      - location-service
+      - business-service
+      - redis-master
+    environment:
+      - REDIS_HOST=redis-master
+      - REDIS_PORT=6739
+      - LOCATION_SERVICE_URL=http://location-service:8921
+      - BUSINESS_SERVICE_URL=http://business-service:9823
+
+  cache-warmer:
+    build: ./services/cache
+    depends_on:
+      - postgres-primary
+      - redis-master
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres-primary:5832/proximity_db
+      - REDIS_HOST=redis-master
+      - REDIS_PORT=6739
+
+volumes:
+  postgres_primary_data:
+  postgres_replica1_data:
+  postgres_replica2_data:
+  redis_master_data:
+  redis_replica1_data:
+  redis_replica2_data:

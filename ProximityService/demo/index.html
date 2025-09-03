@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proximity Service Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .panel h2 {
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .panel h2 i {
+            color: #667eea;
+        }
+        
+        #map {
+            height: 500px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9em;
+        }
+        
+        .control-group input, .control-group select {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        
+        .control-group input:focus, .control-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+        
+        .results {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .result-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            font-size: 0.9em;
+        }
+        
+        .result-item strong {
+            color: #333;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .metric-card h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        
+        .metric-card p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-healthy {
+            background: #38ef7d;
+        }
+        
+        .status-unhealthy {
+            background: #f5576c;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .demo-controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: none;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        .notification.success {
+            border-left: 4px solid #38ef7d;
+        }
+        
+        .notification.error {
+            border-left: 4px solid #f5576c;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #666;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-map-marked-alt"></i> Proximity Service Demo</h1>
+            <p>High-Performance Geospatial Search with Redis Cluster & PostgreSQL Replication</p>
+        </div>
+        
+        <div class="metrics">
+            <div class="metric-card">
+                <h3 id="totalBusinesses">0</h3>
+                <p>Total Businesses</p>
+            </div>
+            <div class="metric-card">
+                <h3 id="dbStatus">
+                    <i class="fas fa-database"></i>
+                    <span class="status-indicator status-healthy"></span>
+                </h3>
+                <p>Database Status</p>
+            </div>
+            <div class="metric-card">
+                <h3 id="cacheStatus">
+                    <i class="fas fa-memory"></i>
+                    <span class="status-indicator status-healthy"></span>
+                </h3>
+                <p>Cache Status</p>
+            </div>
+            <div class="metric-card">
+                <h3 id="responseTime">0ms</h3>
+                <p>Avg Response Time</p>
+            </div>
+        </div>
+        
+        <div class="dashboard">
+            <div class="panel">
+                <h2><i class="fas fa-cogs"></i> Demo Controls</h2>
+                
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('search')">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <button class="tab" onclick="switchTab('business')">
+                        <i class="fas fa-store"></i> Business
+                    </button>
+                    <button class="tab" onclick="switchTab('failover')">
+                        <i class="fas fa-server"></i> Failover
+                    </button>
+                </div>
+                
+                <div id="searchTab" class="tab-content active">
+                    <div class="controls">
+                        <div class="control-group">
+                            <label>Search Location</label>
+                            <select id="presetLocation" onchange="setPresetLocation()">
+                                <option value="">Custom Location</option>
+                                <option value="37.7749,-122.4194">San Francisco</option>
+                                <option value="40.7128,-74.0060">New York</option>
+                                <option value="51.5074,-0.1278">London</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Latitude</label>
+                            <input type="number" id="latitude" value="37.7749" step="0.0001">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Longitude</label>
+                            <input type="number" id="longitude" value="-122.4194" step="0.0001">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Search Radius (meters)</label>
+                            <select id="radius">
+                                <option value="500">500m</option>
+                                <option value="1000" selected>1km</option>
+                                <option value="2000">2km</option>
+                                <option value="5000">5km</option>
+                            </select>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="searchNearby()">
+                            <i class="fas fa-search"></i> Search Nearby
+                        </button>
+                        
+                        <div class="results" id="searchResults"></div>
+                    </div>
+                </div>
+                
+                <div id="businessTab" class="tab-content">
+                    <div class="controls">
+                        <div class="control-group">
+                            <label>Business Name</label>
+                            <input type="text" id="businessName" placeholder="Enter business name">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Category</label>
+                            <select id="businessCategory">
+                                <option value="Restaurant">Restaurant</option>
+                                <option value="Cafe">Cafe</option>
+                                <option value="Hotel">Hotel</option>
+                                <option value="Store">Store</option>
+                                <option value="Service">Service</option>
+                            </select>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>Address</label>
+                            <input type="text" id="businessAddress" placeholder="123 Main St">
+                        </div>
+                        
+                        <div class="info-panel" style="background: #e3f2fd; border: 1px solid #2196f3; border-radius: 8px; padding: 15px; margin: 15px 0; font-size: 0.9em;">
+                            <strong>📊 Demographic & Geospatial Indexing:</strong><br>
+                            When you create a business, it will be automatically indexed in:<br>
+                            • <strong>Regional Search</strong> (~20km radius) - for broader city searches<br>
+                            • <strong>City-level Search</strong> (~4km radius) - for neighborhood discovery<br>
+                            • <strong>Local Search</strong> (~1km radius) - for precise proximity queries<br><br>
+                            
+                            <strong>🗺️ Demographics Added:</strong><br>
+                            • Location: San Francisco, CA, USA<br>
+                            • Searchable within all radius ranges (500m - 5km)<br>
+                            • Visible on map with category-based grouping<br>
+                            • Cached for fast retrieval (24-hour TTL)<br>
+                        </div>
+                        
+                        <button class="btn btn-success" onclick="createBusiness()">
+                            <i class="fas fa-plus"></i> Create Business
+                        </button>
+                        
+                        <button class="btn btn-warning" onclick="generateDemoData()">
+                            <i class="fas fa-magic"></i> Generate Demo Data
+                        </button>
+                        
+                        <div class="results" id="businessResults"></div>
+                    </div>
+                </div>
+                
+                <div id="failoverTab" class="tab-content">
+                    <div class="demo-controls">
+                        <button class="btn btn-danger" onclick="simulateDBFailure()">
+                            <i class="fas fa-times-circle"></i> Kill Primary DB
+                        </button>
+                        
+                        <button class="btn btn-success" onclick="restoreDB()">
+                            <i class="fas fa-check-circle"></i> Restore Primary
+                        </button>
+                        
+                        <button class="btn btn-danger" onclick="simulateCacheFailure()">
+                            <i class="fas fa-times-circle"></i> Kill Redis Master
+                        </button>
+                        
+                        <button class="btn btn-success" onclick="restoreCache()">
+                            <i class="fas fa-check-circle"></i> Restore Redis
+                        </button>
+                        
+                        <button class="btn btn-primary" onclick="checkHealth()">
+                            <i class="fas fa-heartbeat"></i> Health Check
+                        </button>
+                        
+                        <button class="btn btn-warning" onclick="testRateLimit()">
+                            <i class="fas fa-tachometer-alt"></i> Test Rate Limit
+                        </button>
+                    </div>
+                    
+                    <div class="results" id="failoverResults"></div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2><i class="fas fa-map"></i> Live Map View</h2>
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const API_BASE = 'http://localhost:7891/api/v1';
+        let map;
+        let markers = [];
+        let searchCircle;
+        
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([37.7749, -122.4194], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Add click handler
+            map.on('click', function(e) {
+                document.getElementById('latitude').value = e.latlng.lat.toFixed(4);
+                document.getElementById('longitude').value = e.latlng.lng.toFixed(4);
+            });
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle"></i> ${message}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Switch tabs
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // Calculate geohash information for display
+        function calculateGeohashInfo(lat, lng) {
+            // Simple geohash approximation for display purposes
+            const precision4Area = "~20km × 20km region";
+            const precision5Area = "~4km × 5km region"; 
+            const precision6Area = "~1km × 1km region";
+            
+            return `
+                • Precision 4: ${precision4Area} (Regional search)<br>
+                • Precision 5: ${precision5Area} (City-level search)<br>
+                • Precision 6: ${precision6Area} (Neighborhood search)<br>
+                • Indexed for fast proximity queries at all levels
+            `;
+        }
+
+        // Search nearby businesses
+        async function searchNearby() {
+            const lat = document.getElementById('latitude').value;
+            const lng = document.getElementById('longitude').value;
+            const radius = document.getElementById('radius').value;
+            
+            const startTime = Date.now();
+            
+            try {
+                const response = await fetch(`${API_BASE}/search/nearby?latitude=${lat}&longitude=${lng}&radius=${radius}`);
+                const data = await response.json();
+                
+                const responseTime = Date.now() - startTime;
+                document.getElementById('responseTime').textContent = `${responseTime}ms`;
+                
+                // Clear existing markers
+                markers.forEach(marker => map.removeLayer(marker));
+                markers = [];
+                
+                // Remove existing circle
+                if (searchCircle) map.removeLayer(searchCircle);
+                
+                // Add search circle
+                searchCircle = L.circle([lat, lng], {
+                    color: 'blue',
+                    fillColor: '#667eea',
+                    fillOpacity: 0.2,
+                    radius: parseInt(radius)
+                }).addTo(map);
+                
+                // Display results
+                const resultsDiv = document.getElementById('searchResults');
+                resultsDiv.innerHTML = `<strong>Found ${data.businesses.length} businesses</strong><br><em>Loading business details...</em>`;
+                
+                // Fetch detailed business information for first 10 results
+                const businessPromises = data.businesses.slice(0, 10).map(async (result) => {
+                    try {
+                        const businessResponse = await fetch(`${API_BASE}/businesses/${result.business_id}`);
+                        const businessData = await businessResponse.json();
+                        return {
+                            ...businessData,
+                            distance: result.distance
+                        };
+                    } catch (error) {
+                        console.error(`Failed to fetch business ${result.business_id}:`, error);
+                        return {
+                            id: result.business_id,
+                            name: 'Unknown Business',
+                            distance: result.distance,
+                            address: 'Address unavailable',
+                            category: 'Unknown',
+                            latitude: lat,
+                            longitude: lng
+                        };
+                    }
+                });
+                
+                const businesses = await Promise.all(businessPromises);
+                
+                // Clear loading message and show results
+                resultsDiv.innerHTML = `<strong>Found ${data.businesses.length} businesses</strong>`;
+                
+                businesses.forEach(business => {
+                    resultsDiv.innerHTML += `
+                        <div class="result-item">
+                            <strong>${business.name}</strong><br>
+                            Distance: ${Math.round(business.distance)}m<br>
+                            ${business.address || 'Address not available'}
+                        </div>
+                    `;
+                    
+                    // Add marker to map
+                    const marker = L.marker([business.latitude, business.longitude])
+                        .bindPopup(`<strong>${business.name}</strong><br>${business.category}<br>${Math.round(business.distance)}m away`)
+                        .addTo(map);
+                    markers.push(marker);
+                });
+                
+                // Center map
+                map.setView([lat, lng], 14);
+                
+                showNotification(`Found ${data.businesses.length} businesses in ${responseTime}ms`);
+                
+            } catch (error) {
+                showNotification('Search failed: ' + error.message, 'error');
+                console.error('Search error:', error);
+            }
+        }
+        
+        // Create business
+        async function createBusiness() {
+            const name = document.getElementById('businessName').value;
+            const category = document.getElementById('businessCategory').value;
+            const address = document.getElementById('businessAddress').value;
+            const lat = document.getElementById('latitude').value;
+            const lng = document.getElementById('longitude').value;
+            
+            if (!name) {
+                showNotification('Please enter a business name', 'error');
+                return;
+            }
+            
+            const business = {
+                name: name,
+                latitude: parseFloat(lat),
+                longitude: parseFloat(lng),
+                address: address || '123 Demo Street',
+                city: 'San Francisco',
+                state: 'CA',
+                country: 'USA',
+                category: category
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/businesses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(business)
+                });
+                
+                const data = await response.json();
+                
+                // Calculate geohash information for display
+                const geohashInfo = calculateGeohashInfo(data.latitude, data.longitude);
+                
+                document.getElementById('businessResults').innerHTML = `
+                    <div class="result-item">
+                        <strong>✅ Business Created Successfully!</strong><br><br>
+                        
+                        <strong>📍 Location Details:</strong><br>
+                        • Name: ${data.name}<br>
+                        • Address: ${data.address}<br>
+                        • Coordinates: ${data.latitude}, ${data.longitude}<br>
+                        • Category: ${data.category}<br><br>
+                        
+                        <strong>🗺️ Geospatial Indexing:</strong><br>
+                        ${geohashInfo}<br>
+                        
+                        <strong>📊 Demographics Added To:</strong><br>
+                        • City: ${data.city}, ${data.state}<br>
+                        • Country: ${data.country}<br>
+                        • Search Radius: Discoverable within 5km<br>
+                        • Created: ${new Date(data.created_at).toLocaleString()}<br><br>
+                        
+                        <em>Business ID: ${data.id.slice(0, 8)}...</em>
+                    </div>
+                `;
+                
+                // Add marker
+                const marker = L.marker([data.latitude, data.longitude])
+                    .bindPopup(`<strong>${data.name}</strong><br>${data.category}`)
+                    .addTo(map);
+                markers.push(marker);
+                
+                showNotification('Business created successfully!');
+                updateStats();
+                
+            } catch (error) {
+                showNotification('Failed to create business', 'error');
+            }
+        }
+        
+        // Generate demo data
+        async function generateDemoData() {
+            const categories = ['Restaurant', 'Cafe', 'Hotel', 'Store', 'Service'];
+            const names = ['Golden', 'Bay Area', 'Pacific', 'Silicon Valley', 'Downtown'];
+            const types = ['Bistro', 'Coffee', 'Inn', 'Market', 'Center'];
+            
+            showNotification('Generating demo data...');
+            
+            for (let i = 0; i < 10; i++) {
+                const lat = 37.7749 + (Math.random() - 0.5) * 0.05;
+                const lng = -122.4194 + (Math.random() - 0.5) * 0.05;
+                
+                const business = {
+                    name: `${names[Math.floor(Math.random() * names.length)]} ${types[Math.floor(Math.random() * types.length)]}`,
+                    latitude: lat,
+                    longitude: lng,
+                    address: `${Math.floor(Math.random() * 999) + 1} Market St`,
+                    city: 'San Francisco',
+                    state: 'CA',
+                    country: 'USA',
+                    category: categories[Math.floor(Math.random() * categories.length)]
+                };
+                
+                await fetch(`${API_BASE}/businesses`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(business)
+                });
+                
+                // Add marker
+                const marker = L.marker([lat, lng])
+                    .bindPopup(`<strong>${business.name}</strong><br>${business.category}`)
+                    .addTo(map);
+                markers.push(marker);
+            }
+            
+            showNotification('Generated 10 demo businesses!');
+            updateStats();
+        }
+        
+        // Simulate database failure
+        async function simulateDBFailure() {
+            const instructions = `
+                <strong>🔥 Kill Primary Database:</strong><br><br>
+                Run this command in your terminal:<br>
+                <code style="background: #333; color: #fff; padding: 10px; border-radius: 5px; display: block; margin: 10px 0;">
+                docker-compose stop postgres-primary
+                </code><br>
+                
+                <strong>Expected Results:</strong><br>
+                • ✅ Search/read operations continue (via replicas)<br>
+                • ❌ Create/update operations fail<br>
+                • ⚠️ System runs in degraded mode<br><br>
+                
+                <strong>To check status:</strong><br>
+                <code style="background: #333; color: #fff; padding: 10px; border-radius: 5px; display: block; margin: 10px 0;">
+                ./check-db-failover.sh
+                </code>
+            `;
+            
+            document.getElementById('failoverResults').innerHTML = instructions;
+            showNotification('Database failover instructions displayed!', 'info');
+        }
+        
+        // Restore database
+        async function restoreDB() {
+            const instructions = `
+                <strong>🔧 Restore Primary Database:</strong><br><br>
+                Run this command in your terminal:<br>
+                <code style="background: #333; color: #fff; padding: 10px; border-radius: 5px; display: block; margin: 10px 0;">
+                docker-compose start postgres-primary
+                </code><br>
+                
+                <strong>Expected Results:</strong><br>
+                • ✅ Full service restored<br>
+                • ✅ Write operations resume<br>
+                • ✅ System back to normal operation<br><br>
+                
+                <strong>To verify restoration:</strong><br>
+                <code style="background: #333; color: #fff; padding: 10px; border-radius: 5px; display: block; margin: 10px 0;">
+                ./check-db-failover.sh
+                </code>
+            `;
+            
+            document.getElementById('failoverResults').innerHTML = instructions;
+            showNotification('Database restoration instructions displayed!', 'info');
+        }
+        
+        // Simulate cache failure
+        async function simulateCacheFailure() {
+            try {
+                const response = await fetch('http://localhost:7891/demo/kill-redis-master', {
+                    method: 'POST'
+                });
+                
+                showNotification('Redis master killed!', 'error');
+                
+                setTimeout(() => {
+                    checkHealth();
+                }, 1000);
+                
+            } catch (error) {
+                showNotification('Failed to kill Redis', 'error');
+            }
+        }
+        
+        // Restore cache
+        async function restoreCache() {
+            try {
+                const response = await fetch('http://localhost:7891/demo/restore-redis-master', {
+                    method: 'POST'
+                });
+                
+                showNotification('Redis master restored!');
+                
+                setTimeout(() => {
+                    checkHealth();
+                }, 1000);
+                
+            } catch (error) {
+                showNotification('Failed to restore Redis', 'error');
+            }
+        }
+        
+        // Check health
+        async function checkHealth() {
+            try {
+                const response = await fetch('http://localhost:7891/health');
+                const data = await response.json();
+                
+                const resultsDiv = document.getElementById('failoverResults');
+                resultsDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                // Update status indicators
+                const dbHealthy = data.database && (data.database.primary || data.database.replicas.some(r => r.healthy));
+                const cacheHealthy = data.redis && (data.redis.master || data.redis.slaves.some(s => s.healthy));
+                
+                document.querySelector('#dbStatus .status-indicator').className = 
+                    `status-indicator ${dbHealthy ? 'status-healthy' : 'status-unhealthy'}`;
+                
+                document.querySelector('#cacheStatus .status-indicator').className = 
+                    `status-indicator ${cacheHealthy ? 'status-healthy' : 'status-unhealthy'}`;
+                
+                showNotification(`Health check complete: ${data.status}`);
+                
+            } catch (error) {
+                showNotification('Health check failed', 'error');
+            }
+        }
+        
+        // Test rate limiting
+        async function testRateLimit() {
+            showNotification('Testing rate limit...');
+            const resultsDiv = document.getElementById('failoverResults');
+            resultsDiv.innerHTML = '<strong>Sending 100 requests...</strong><br>';
+            
+            let successCount = 0;
+            let rateLimitCount = 0;
+            
+            for (let i = 0; i < 100; i++) {
+                try {
+                    const response = await fetch('http://localhost:7891/health');
+                    if (response.status === 200) {
+                        successCount++;
+                    } else if (response.status === 429) {
+                        rateLimitCount++;
+                    }
+                } catch (error) {
+                    // Ignore
+                }
+            }
+            
+            resultsDiv.innerHTML += `
+                <div class="result-item">
+                    Success: ${successCount}<br>
+                    Rate Limited: ${rateLimitCount}<br>
+                    Total: 100
+                </div>
+            `;
+            
+            showNotification(`Rate limit test complete: ${rateLimitCount} requests blocked`);
+        }
+        
+        // Set preset location
+        function setPresetLocation() {
+            const select = document.getElementById('presetLocation');
+            if (select.value) {
+                const [lat, lng] = select.value.split(',');
+                document.getElementById('latitude').value = lat;
+                document.getElementById('longitude').value = lng;
+                map.setView([parseFloat(lat), parseFloat(lng)], 13);
+            }
+        }
+        
+        // Update statistics
+        async function updateStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const data = await response.json();
+                
+                document.getElementById('totalBusinesses').textContent = data.total_businesses || '0';
+                
+            } catch (error) {
+                console.error('Failed to update stats');
+            }
+        }
+        
+        // Initialize on load
+        window.onload = function() {
+            initMap();
+            checkHealth();
+            updateStats();
+        };
+    </script>
+</body>
+</html>
