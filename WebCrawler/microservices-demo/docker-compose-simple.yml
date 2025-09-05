@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # Redis for shared state and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - crawler_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # URL Frontier Service
+  frontier:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: frontier
+    ports:
+      - "5011:5000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=5000
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - crawler_network
+    restart: unless-stopped
+
+  # HTML Downloader Service
+  downloader:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: downloader
+    ports:
+      - "5002:5000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=5000
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - crawler_network
+    restart: unless-stopped
+
+  # Content Parser Service
+  parser:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: parser
+    ports:
+      - "5003:5000"
+    environment:
+      - PORT=5000
+    networks:
+      - crawler_network
+    restart: unless-stopped
+
+  # Content Deduplication Service
+  deduplication:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: deduplication
+    ports:
+      - "5004:5000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=5000
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - crawler_network
+    restart: unless-stopped
+
+  # API Gateway Service
+  gateway:
+    build:
+      context: .
+      args:
+        SERVICE_NAME: gateway
+    ports:
+      - "5010:5000"
+    environment:
+      - FRONTIER_URL=http://frontier:5000
+      - DOWNLOADER_URL=http://downloader:5000
+      - PARSER_URL=http://parser:5000
+      - DEDUP_URL=http://deduplication:5000
+      - PORT=5000
+    depends_on:
+      - frontier
+      - downloader
+      - parser
+      - deduplication
+    networks:
+      - crawler_network
+    restart: unless-stopped
+
+networks:
+  crawler_network:
+    driver: bridge
+
+volumes:
+  redis_data:
