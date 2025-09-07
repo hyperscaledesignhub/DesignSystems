@@ -1,0 +1,12 @@
+This is a sample text file for testing Google Drive file operations.
+It contains multiple lines and some content to verify upload/download functionality.
+
+Test features:
+- File upload
+- File download  
+- File listing
+- File sharing
+- File deletion
+- File renaming
+
+Created for testing purposes only.
