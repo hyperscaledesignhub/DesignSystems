@@ -1,0 +1,1 @@
+{"key": "user-123", "value": "{\"orderId\": \"ORD-001\", \"userId\": \"user-123\", \"amount\": 99.99}", "topic": "test-orders", "partition": 1, "offset": 0, "timestamp": "2025-09-08T11:37:50.318394", "message_id": "b36f3d34-5d3b-4219-8553-facb5cbcdcc5"}
