@@ -1,0 +1,13 @@
+{
+  "name": "notification-system-demo-ui",
+  "version": "1.0.0",
+  "description": "Demo UI for Notification System",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}
