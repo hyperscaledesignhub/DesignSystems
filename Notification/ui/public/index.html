@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification System Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📬 Notification System Demo</h1>
+            <p>Test all notification features in one place</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- Service Status Panel -->
+            <div class="panel service-status">
+                <h2>🔌 Service Status</h2>
+                <div id="service-list">
+                    <div class="service-item">
+                        <span class="service-name">API Gateway</span>
+                        <span class="status-indicator" id="status-api-gateway">●</span>
+                    </div>
+                    <div class="service-item">
+                        <span class="service-name">Notification Server</span>
+                        <span class="status-indicator" id="status-notification-server">●</span>
+                    </div>
+                    <div class="service-item">
+                        <span class="service-name">User Database</span>
+                        <span class="status-indicator" id="status-user-database">●</span>
+                    </div>
+                    <div class="service-item">
+                        <span class="service-name">Email Worker</span>
+                        <span class="status-indicator" id="status-email-worker">●</span>
+                    </div>
+                    <div class="service-item">
+                        <span class="service-name">SMS Worker</span>
+                        <span class="status-indicator" id="status-sms-worker">●</span>
+                    </div>
+                    <div class="service-item">
+                        <span class="service-name">Push Worker</span>
+                        <span class="status-indicator" id="status-push-worker">●</span>
+                    </div>
+                </div>
+                <button onclick="checkServices()" class="btn btn-secondary">Refresh Status</button>
+            </div>
+
+            <!-- User Management Panel -->
+            <div class="panel user-management">
+                <h2>👤 User Management</h2>
+                <div class="form-group">
+                    <label>Create New User</label>
+                    <input type="email" id="user-email" placeholder="user@example.com">
+                    <input type="tel" id="user-phone" placeholder="+1234567890">
+                    <button onclick="createUser()" class="btn btn-primary">Create User</button>
+                </div>
+                <div class="form-group">
+                    <label>Add Device Token</label>
+                    <input type="number" id="device-user-id" placeholder="User ID">
+                    <input type="text" id="device-token" placeholder="Device Token">
+                    <select id="device-type">
+                        <option value="ios">iOS</option>
+                        <option value="android">Android</option>
+                    </select>
+                    <button onclick="addDevice()" class="btn btn-primary">Add Device</button>
+                </div>
+                <div id="user-list" class="user-list"></div>
+            </div>
+
+            <!-- Send Notification Panel -->
+            <div class="panel send-notification">
+                <h2>📤 Send Notification</h2>
+                <div class="form-group">
+                    <label>User ID</label>
+                    <input type="number" id="notification-user-id" placeholder="Enter User ID">
+                </div>
+                <div class="form-group">
+                    <label>Notification Type</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="notification-type" value="email" checked>
+                            <span>📧 Email</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="notification-type" value="sms">
+                            <span>💬 SMS</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="notification-type" value="push">
+                            <span>🔔 Push</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" id="subject-group">
+                    <label>Subject (Email only)</label>
+                    <input type="text" id="notification-subject" placeholder="Email Subject">
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="notification-message" placeholder="Enter your message here..." rows="4"></textarea>
+                </div>
+                <button onclick="sendNotification()" class="btn btn-success btn-large">Send Notification</button>
+            </div>
+
+            <!-- Notification History Panel -->
+            <div class="panel notification-history">
+                <h2>📜 Notification History</h2>
+                <div class="form-group">
+                    <input type="number" id="history-user-id" placeholder="User ID (optional)">
+                    <button onclick="loadNotificationHistory()" class="btn btn-secondary">Load History</button>
+                </div>
+                <div id="notification-list" class="notification-list"></div>
+            </div>
+
+            <!-- System Capabilities Panel -->
+            <div class="panel system-capabilities">
+                <h2>⚙️ System Capabilities</h2>
+                <div class="capabilities-grid">
+                    <div class="capability-item">
+                        <h3>✅ Implemented Features</h3>
+                        <ul>
+                            <li>Multi-channel notifications (Email, SMS, Push)</li>
+                            <li>User management with contact info</li>
+                            <li>Device token management</li>
+                            <li>Message queuing with Redis</li>
+                            <li>Basic retry mechanism (3 attempts)</li>
+                            <li>Service health monitoring</li>
+                            <li>Notification status tracking</li>
+                            <li>REST API endpoints</li>
+                            <li>Worker-based processing</li>
+                            <li>SQLite user database</li>
+                        </ul>
+                    </div>
+                    <div class="capability-item">
+                        <h3>🚫 Not Implemented</h3>
+                        <ul>
+                            <li>Authentication & rate limiting</li>
+                            <li>Notification templates</li>
+                            <li>User preferences & opt-out</li>
+                            <li>Scheduled notifications</li>
+                            <li>Analytics & tracking</li>
+                            <li>A/B testing</li>
+                            <li>Dead letter queues</li>
+                            <li>Advanced retry strategies</li>
+                            <li>Multi-region support</li>
+                            <li>Webhook integrations</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demo Scenarios Panel -->
+            <div class="panel demo-scenarios">
+                <h2>🎭 Demo Scenarios</h2>
+                <div class="scenario-buttons">
+                    <button onclick="runScenario('single-email')" class="btn btn-scenario">
+                        📧 Single Email
+                    </button>
+                    <button onclick="runScenario('bulk-sms')" class="btn btn-scenario">
+                        💬 Bulk SMS
+                    </button>
+                    <button onclick="runScenario('push-broadcast')" class="btn btn-scenario">
+                        🔔 Push Broadcast
+                    </button>
+                    <button onclick="runScenario('multi-channel')" class="btn btn-scenario">
+                        🌐 Multi-Channel
+                    </button>
+                    <button onclick="runScenario('stress-test')" class="btn btn-scenario">
+                        ⚡ Stress Test
+                    </button>
+                </div>
+                <div id="scenario-output" class="scenario-output"></div>
+            </div>
+        </div>
+
+        <!-- Response/Log Panel -->
+        <div class="panel response-panel">
+            <h2>📝 Response Log</h2>
+            <div id="response-log" class="response-log"></div>
+            <button onclick="clearLog()" class="btn btn-secondary">Clear Log</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

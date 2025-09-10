@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  redis:
+    build: ./services/redis
+    ports:
+      - "7847:7847"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "7847", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  user-database:
+    build: ./services/user-database
+    ports:
+      - "7846:7846"
+    volumes:
+      - user_db_data:/app
+    environment:
+      - DATABASE_URL=sqlite:///./users.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7846/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - redis
+
+  email-worker:
+    build: ./services/email-worker
+    ports:
+      - "7843:7843"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=7847
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7843/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - redis
+
+  sms-worker:
+    build: ./services/sms-worker
+    ports:
+      - "7844:7844"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=7847
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7844/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - redis
+
+  push-worker:
+    build: ./services/push-worker
+    ports:
+      - "7845:7845"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=7847
+      - USER_DB_URL=http://user-database:7846
+      - FCM_SERVER_KEY=${FCM_SERVER_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7845/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - redis
+      - user-database
+
+  notification-server:
+    build: ./services/notification-server
+    ports:
+      - "7842:7842"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=7847
+      - USER_DB_URL=http://user-database:7846
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7842/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - redis
+      - user-database
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "7841:7841"
+    environment:
+      - NOTIFICATION_SERVER_URL=http://notification-server:7842
+      - USER_DB_URL=http://user-database:7846
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7841/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    depends_on:
+      - notification-server
+      - user-database
+
+volumes:
+  redis_data:
+  user_db_data:
