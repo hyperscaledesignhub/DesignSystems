@@ -1,0 +1,95 @@
+# Alert Rules Configuration
+rules:
+  - name: high_cpu_usage
+    metric: cpu_usage_percent
+    condition: ">"
+    threshold: 80.0
+    duration: "5m"
+    severity: "critical"
+    description: "CPU usage is above 80% for more than 5 minutes"
+    labels:
+      team: "infrastructure"
+      service: "monitoring"
+    notifications:
+      - type: "email"
+        recipients: ["admin@metrics.local", "ops@metrics.local"]
+      - type: "webhook"
+        url: "http://localhost:8080/webhook"
+    
+  - name: high_memory_usage
+    metric: memory_usage_percent
+    condition: ">"
+    threshold: 85.0
+    duration: "3m"
+    severity: "warning"
+    description: "Memory usage is above 85% for more than 3 minutes"
+    labels:
+      team: "infrastructure"
+      service: "monitoring"
+    notifications:
+      - type: "email"
+        recipients: ["admin@metrics.local"]
+      - type: "webhook"
+        url: "http://localhost:8080/webhook"
+        
+  - name: high_disk_usage
+    metric: disk_usage_percent
+    condition: ">"
+    threshold: 90.0
+    duration: "10m"
+    severity: "critical"
+    description: "Disk usage is above 90% for more than 10 minutes"
+    labels:
+      team: "infrastructure"
+      service: "storage"
+    notifications:
+      - type: "email"
+        recipients: ["admin@metrics.local", "storage@metrics.local"]
+      - type: "webhook"
+        url: "http://localhost:8080/webhook"
+
+  - name: low_cpu_test
+    metric: cpu_usage_percent
+    condition: ">"
+    threshold: 30.0
+    duration: "1m"
+    severity: "info"
+    description: "Test alert for CPU usage above 30% (should trigger)"
+    labels:
+      team: "test"
+      service: "demo"
+    notifications:
+      - type: "webhook"
+        url: "http://localhost:8080/webhook"
+
+  - name: service_down
+    metric: health.status
+    condition: "=="
+    threshold: 0.0
+    duration: "2m"
+    severity: "critical"
+    description: "Service health check is failing for more than 2 minutes"
+    labels:
+      team: "infrastructure"
+      service: "monitoring"
+    notifications:
+      - type: "email"
+        recipients: ["admin@metrics.local", "ops@metrics.local"]
+      - type: "webhook"
+        url: "http://localhost:8080/webhook"
+
+  - name: service_unhealthy
+    metric: health.check_failed
+    condition: ">"
+    threshold: 0.0
+    duration: "1m"
+    severity: "warning" 
+    description: "Service health checks are failing"
+    labels:
+      team: "infrastructure"
+      service: "monitoring"
+    notifications:
+      - type: "email"
+        recipients: ["admin@metrics.local"]
+      - type: "webhook"
+        url: "http://localhost:8080/webhook"

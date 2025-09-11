@@ -1,0 +1,63 @@
+{
+  "timestamp": "2025-09-10T13:27:57.969506",
+  "test_duration_seconds": 6.053351879119873,
+  "overall_status": "PARTIAL",
+  "summary": {
+    "total_tests": 4,
+    "passed": 3,
+    "failed": 1,
+    "errors": 0,
+    "success_rate": "75.0%"
+  },
+  "test_results": {
+    "step1_api_metrics": {
+      "status": "PASS",
+      "metrics_found": [
+        "api_request_total",
+        "api_request_duration_seconds",
+        "api_error_rate"
+      ],
+      "missing_metrics": [],
+      "has_labels": true,
+      "response_status": 200
+    },
+    "step2_metrics_collection": {
+      "status": "FAIL",
+      "collector_healthy": false,
+      "collector_has_data": true,
+      "metrics_count": 6,
+      "query_has_data": false,
+      "stored_data_points": 0
+    },
+    "step3_alert_thresholds": {
+      "status": "PASS",
+      "alert_manager_healthy": true,
+      "alerts_accessible": true,
+      "test_metrics_pushed": [
+        "high_response_time",
+        "high_error_rate"
+      ],
+      "alerts_data": {}
+    },
+    "step4_dashboard": {
+      "status": "PASS",
+      "dashboard_healthy": true,
+      "throughput_data_points": 0,
+      "response_time_data_points": 0,
+      "error_data_points": 0,
+      "has_visualization_data": false,
+      "dashboard_data": {
+        "healthy": true,
+        "checks": {
+          "query_service": {
+            "status": "ok"
+          },
+          "alert_manager": {
+            "status": "ok"
+          }
+        },
+        "timestamp": "2025-09-10T13:27:58.062Z"
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+# Alert Rules Configuration
+rules:
+  - name: high_cpu_usage
+    metric_name: cpu_usage_percent
+    threshold: 80.0
+    duration_minutes: 5
+    severity: critical
+    message: "CPU usage is above 80% for more than 5 minutes"
+    labels:
+      team: "infrastructure"
+      service: "monitoring"
+    
+  - name: high_memory_usage
+    metric_name: memory_usage_percent
+    threshold: 85.0
+    duration_minutes: 3
+    severity: warning
+    message: "Memory usage is above 85% for more than 3 minutes"
+    labels:
+      team: "infrastructure"
+      service: "monitoring"
+        
+  - name: high_disk_usage
+    metric_name: disk_usage_percent
+    threshold: 90.0
+    duration_minutes: 10
+    severity: critical
+    message: "Disk usage is above 90% for more than 10 minutes"
+    labels:
+      team: "infrastructure"
+      service: "storage"
+
+  - name: low_cpu_test
+    metric_name: cpu_usage_percent
+    threshold: 30.0
+    duration_minutes: 1
+    severity: low
+    message: "Test alert for CPU usage above 30% (should trigger)"
+    labels:
+      team: "test"
+      service: "demo"

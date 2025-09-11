@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metrics Monitoring System - Interactive Demo</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📊 Metrics Monitoring System - Interactive Demo</h1>
+            <div class="header-info">
+                <span class="status-indicator" id="connection-status">
+                    <span class="pulse"></span> Connected
+                </span>
+                <button class="btn btn-primary" onclick="openDashboard()">Open Main Dashboard</button>
+            </div>
+        </header>
+
+        <!-- Service Status Panel -->
+        <section class="panel">
+            <h2>🔧 Service Status</h2>
+            <div class="services-grid" id="services-grid">
+                <!-- Service status cards will be inserted here -->
+            </div>
+        </section>
+
+        <!-- Workflow Demonstrations -->
+        <section class="panel">
+            <h2>🔄 End-to-End Workflows</h2>
+            <div class="workflows-container">
+                <div class="workflow-buttons">
+                    <button class="workflow-btn" onclick="runWorkflow('metric-collection')">
+                        <span class="icon">📈</span>
+                        <span>Metric Collection Flow</span>
+                    </button>
+                    <button class="workflow-btn" onclick="runWorkflow('alert-trigger')">
+                        <span class="icon">🚨</span>
+                        <span>Alert Trigger Flow</span>
+                    </button>
+                    <button class="workflow-btn" onclick="runWorkflow('dashboard-query')">
+                        <span class="icon">📊</span>
+                        <span>Dashboard Query Flow</span>
+                    </button>
+                    <button class="workflow-btn" onclick="runWorkflow('service-discovery')">
+                        <span class="icon">🔍</span>
+                        <span>Service Discovery Flow</span>
+                    </button>
+                    <button class="workflow-btn" onclick="runWorkflow('historical-query')">
+                        <span class="icon">📅</span>
+                        <span>Historical Query Flow</span>
+                    </button>
+                </div>
+                <div class="workflow-visualization" id="workflow-viz">
+                    <div class="workflow-placeholder">
+                        <p>Select a workflow to see the step-by-step execution</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Metrics Display -->
+        <section class="panel">
+            <h2>📉 Live Metrics</h2>
+            <div class="metrics-controls">
+                <select id="metric-type" class="select">
+                    <option value="cpu">CPU Usage</option>
+                    <option value="memory">Memory Usage</option>
+                    <option value="network">Network Throughput</option>
+                    <option value="errors">Error Rate</option>
+                </select>
+                <button class="btn btn-secondary" onclick="startDataGeneration()">Generate Test Data</button>
+                <button class="btn btn-danger" onclick="stopDataGeneration()">Stop Generation</button>
+            </div>
+            <div class="chart-container">
+                <canvas id="metrics-chart"></canvas>
+            </div>
+        </section>
+
+        <!-- Alert Management -->
+        <section class="panel">
+            <h2>🚨 Alert Management</h2>
+            <div class="alert-controls">
+                <button class="btn btn-warning" onclick="triggerTestAlert('warning')">Trigger Warning Alert</button>
+                <button class="btn btn-danger" onclick="triggerTestAlert('critical')">Trigger Critical Alert</button>
+                <button class="btn btn-success" onclick="resolveAlerts()">Resolve All Alerts</button>
+            </div>
+            <div class="alerts-list" id="alerts-list">
+                <div class="no-alerts">No active alerts</div>
+            </div>
+        </section>
+
+        <!-- Feature Showcase -->
+        <section class="panel">
+            <h2>✨ Feature Showcase</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>📊 Data Collection</h3>
+                    <ul>
+                        <li>Pull-based collection</li>
+                        <li>Service discovery with etcd</li>
+                        <li>30-second intervals</li>
+                        <li>Prometheus format support</li>
+                    </ul>
+                    <button class="btn btn-sm" onclick="showFeatureDemo('collection')">Demo</button>
+                </div>
+                <div class="feature-card">
+                    <h3>💾 Data Storage</h3>
+                    <ul>
+                        <li>InfluxDB time-series DB</li>
+                        <li>30-day raw retention</li>
+                        <li>1-year hourly aggregation</li>
+                        <li>Automatic downsampling</li>
+                    </ul>
+                    <button class="btn btn-sm" onclick="showFeatureDemo('storage')">Demo</button>
+                </div>
+                <div class="feature-card">
+                    <h3>🔍 Query Service</h3>
+                    <ul>
+                        <li>REST API interface</li>
+                        <li>Redis caching layer</li>
+                        <li>Aggregation support</li>
+                        <li>Historical queries</li>
+                    </ul>
+                    <button class="btn btn-sm" onclick="showFeatureDemo('query')">Demo</button>
+                </div>
+                <div class="feature-card">
+                    <h3>🚨 Alerting</h3>
+                    <ul>
+                        <li>Threshold-based rules</li>
+                        <li>Email notifications</li>
+                        <li>Webhook integration</li>
+                        <li>State management</li>
+                    </ul>
+                    <button class="btn btn-sm" onclick="showFeatureDemo('alerting')">Demo</button>
+                </div>
+                <div class="feature-card">
+                    <h3>📈 Visualization</h3>
+                    <ul>
+                        <li>Real-time charts</li>
+                        <li>WebSocket updates</li>
+                        <li>Multiple chart types</li>
+                        <li>Mobile responsive</li>
+                    </ul>
+                    <button class="btn btn-sm" onclick="showFeatureDemo('visualization')">Demo</button>
+                </div>
+                <div class="feature-card">
+                    <h3>🔄 Scalability</h3>
+                    <ul>
+                        <li>Horizontal scaling</li>
+                        <li>Kafka partitioning</li>
+                        <li>Load balancing</li>
+                        <li>10M+ metrics/day</li>
+                    </ul>
+                    <button class="btn btn-sm" onclick="showFeatureDemo('scalability')">Demo</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Metrics -->
+        <section class="panel">
+            <h2>📊 System Performance</h2>
+            <div class="performance-metrics">
+                <div class="metric-box">
+                    <span class="metric-label">Metrics Collected</span>
+                    <span class="metric-value" id="metrics-collected">0</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Queries/Second</span>
+                    <span class="metric-value" id="queries-per-second">0</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Active Alerts</span>
+                    <span class="metric-value" id="active-alerts">0</span>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">Cache Hit Rate</span>
+                    <span class="metric-value" id="cache-hit-rate">0%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Console Output -->
+        <section class="panel">
+            <h2>🖥️ System Console</h2>
+            <div class="console" id="console">
+                <div class="console-line">[System] Demo UI initialized</div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal for feature demos -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+influxdb-client==1.38.0
+redis==5.0.1
+pydantic==2.5.0
+psutil==5.9.6
