@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alert Status - Metrics Monitoring</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .nav {
+            background-color: #34495e;
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .nav a:hover {
+            background-color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .alert-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .summary-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .critical { color: #e74c3c; }
+        .warning { color: #f39c12; }
+        .resolved { color: #27ae60; }
+
+        .alerts-section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+
+        .alert-item {
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: box-shadow 0.3s;
+        }
+
+        .alert-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .alert-severity {
+            padding: 0.2rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .severity-critical {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .severity-warning {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .severity-low {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .alert-metric {
+            color: #7f8c8d;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-value {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-message {
+            color: #555;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-time {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .no-alerts {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 2rem;
+        }
+
+        .loading {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 2rem;
+        }
+
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            padding: 1rem;
+            background-color: #fdf2f2;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+
+        .refresh-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .refresh-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Alert Status</h1>
+    </div>
+    
+    <div class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/alerts">Alerts</a>
+    </div>
+
+    <div class="container">
+        <div class="alert-summary">
+            <div class="summary-card">
+                <div class="summary-number critical" id="critical-count">0</div>
+                <div class="summary-label">Critical Alerts</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-number warning" id="warning-count">0</div>
+                <div class="summary-label">Warning Alerts</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-number" id="total-count">0</div>
+                <div class="summary-label">Total Active</div>
+            </div>
+        </div>
+
+        <div class="alerts-section">
+            <div class="section-title">
+                Active Alerts
+                <button class="refresh-btn" onclick="alertsPage.refresh()">Refresh</button>
+            </div>
+            
+            <div id="alerts-container">
+                <div class="loading">Loading alerts...</div>
+            </div>
+        </div>
+
+        <div class="last-updated" id="last-updated">
+            Last updated: --
+        </div>
+    </div>
+
+    <script>
+        class AlertsPage {
+            constructor() {
+                this.updateInterval = null;
+                this.startPolling();
+            }
+
+            async fetchAlerts() {
+                try {
+                    const response = await fetch('/api/dashboard/alerts');
+                    const data = await response.json();
+                    this.updateAlertsDisplay(data);
+                    this.updateTimestamp();
+                } catch (error) {
+                    console.error('Failed to fetch alerts:', error);
+                    this.showError('Failed to fetch alerts: ' + error.message);
+                }
+            }
+
+            updateAlertsDisplay(alertsData) {
+                const container = document.getElementById('alerts-container');
+                const alerts = alertsData.alerts || [];
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = '<div class="no-alerts">No active alerts</div>';
+                } else {
+                    container.innerHTML = alerts.map(alert => this.createAlertHTML(alert)).join('');
+                }
+
+                this.updateSummary(alerts);
+            }
+
+            createAlertHTML(alert) {
+                const startTime = new Date(alert.started_at);
+                const now = new Date();
+                const duration = Math.floor((now - startTime) / 1000 / 60); // minutes
+                
+                return `
+                    <div class="alert-item">
+                        <div class="alert-header">
+                            <div class="alert-name">${alert.rule_name}</div>
+                            <div class="alert-severity severity-${alert.severity}">${alert.severity}</div>
+                        </div>
+                        <div class="alert-metric">Metric: ${alert.metric_name}</div>
+                        <div class="alert-value">
+                            Current: ${alert.current_value.toFixed(2)} | Threshold: ${alert.threshold}
+                        </div>
+                        <div class="alert-message">${alert.message}</div>
+                        <div class="alert-time">
+                            Started: ${startTime.toLocaleString()} (${duration} minutes ago)
+                        </div>
+                        ${Object.keys(alert.labels).length > 0 ? 
+                            `<div class="alert-labels">Labels: ${Object.entries(alert.labels).map(([k,v]) => `${k}=${v}`).join(', ')}</div>` 
+                            : ''
+                        }
+                    </div>
+                `;
+            }
+
+            updateSummary(alerts) {
+                const summary = alerts.reduce((acc, alert) => {
+                    acc.total++;
+                    if (alert.severity === 'critical') acc.critical++;
+                    if (alert.severity === 'warning') acc.warning++;
+                    return acc;
+                }, { total: 0, critical: 0, warning: 0 });
+
+                document.getElementById('total-count').textContent = summary.total;
+                document.getElementById('critical-count').textContent = summary.critical;
+                document.getElementById('warning-count').textContent = summary.warning;
+            }
+
+            showError(message) {
+                const container = document.getElementById('alerts-container');
+                container.innerHTML = `<div class="error">${message}</div>`;
+            }
+
+            updateTimestamp() {
+                const element = document.getElementById('last-updated');
+                const now = new Date();
+                element.textContent = `Last updated: ${now.toLocaleString()}`;
+            }
+
+            refresh() {
+                this.fetchAlerts();
+            }
+
+            startPolling() {
+                // Initial load
+                this.fetchAlerts();
+                
+                // Poll every 30 seconds
+                this.updateInterval = setInterval(() => {
+                    this.fetchAlerts();
+                }, 30000);
+            }
+
+            stop() {
+                if (this.updateInterval) {
+                    clearInterval(this.updateInterval);
+                }
+            }
+        }
+
+        // Initialize alerts page when DOM loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.alertsPage = new AlertsPage();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (window.alertsPage) {
+                window.alertsPage.stop();
+            }
+        });
+    </script>
+</body>
+</html>

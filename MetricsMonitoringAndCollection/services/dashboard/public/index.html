@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metrics Monitoring Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .nav {
+            background-color: #34495e;
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .nav a:hover {
+            background-color: #2c3e50;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .metric-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-unit {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 1rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-good { background-color: #27ae60; }
+        .status-warning { background-color: #f39c12; }
+        .status-critical { background-color: #e74c3c; }
+
+        .last-updated {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: #7f8c8d;
+        }
+
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Metrics Monitoring Dashboard</h1>
+    </div>
+    
+    <div class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/alerts">Alerts</a>
+    </div>
+
+    <div class="dashboard">
+        <div class="metric-card">
+            <div class="metric-title">
+                <span class="status-indicator" id="cpu-status"></span>
+                CPU Usage
+            </div>
+            <div class="metric-value" id="cpu-value">--</div>
+            <div class="metric-unit">%</div>
+            <div class="chart-container">
+                <canvas id="cpu-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-title">
+                <span class="status-indicator" id="memory-status"></span>
+                Memory Usage
+            </div>
+            <div class="metric-value" id="memory-value">--</div>
+            <div class="metric-unit">%</div>
+            <div class="chart-container">
+                <canvas id="memory-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-title">
+                <span class="status-indicator" id="disk-status"></span>
+                Disk Usage
+            </div>
+            <div class="metric-value" id="disk-value">--</div>
+            <div class="metric-unit">%</div>
+            <div class="chart-container">
+                <canvas id="disk-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="last-updated" id="last-updated">
+        Last updated: --
+    </div>
+
+    <script>
+        class MetricsDashboard {
+            constructor() {
+                this.charts = {};
+                this.websocket = null;
+                this.updateInterval = null;
+                this.initializeCharts();
+                this.connectWebSocket();
+                this.startPolling();
+            }
+
+            initializeCharts() {
+                const chartConfig = {
+                    type: 'line',
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        elements: {
+                            point: {
+                                radius: 2
+                            }
+                        }
+                    }
+                };
+
+                this.charts.cpu = new Chart(document.getElementById('cpu-chart'), {
+                    ...chartConfig,
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'CPU Usage',
+                            data: [],
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            fill: true
+                        }]
+                    }
+                });
+
+                this.charts.memory = new Chart(document.getElementById('memory-chart'), {
+                    ...chartConfig,
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Memory Usage',
+                            data: [],
+                            borderColor: '#9b59b6',
+                            backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                            fill: true
+                        }]
+                    }
+                });
+
+                this.charts.disk = new Chart(document.getElementById('disk-chart'), {
+                    ...chartConfig,
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Disk Usage',
+                            data: [],
+                            borderColor: '#e67e22',
+                            backgroundColor: 'rgba(230, 126, 34, 0.1)',
+                            fill: true
+                        }]
+                    }
+                });
+            }
+
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}`;
+                
+                this.websocket = new WebSocket(wsUrl);
+                
+                this.websocket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'metrics_update') {
+                            this.updateLatestValues(data.data);
+                        }
+                    } catch (error) {
+                        console.error('WebSocket message error:', error);
+                    }
+                };
+
+                this.websocket.onclose = () => {
+                    console.log('WebSocket disconnected, attempting to reconnect...');
+                    setTimeout(() => this.connectWebSocket(), 5000);
+                };
+            }
+
+            async fetchMetrics() {
+                try {
+                    const response = await fetch('/api/dashboard/metrics');
+                    const data = await response.json();
+                    this.updateCharts(data.metrics);
+                    this.updateTimestamp(data.timestamp);
+                } catch (error) {
+                    console.error('Failed to fetch metrics:', error);
+                }
+            }
+
+            async fetchLatest() {
+                try {
+                    const response = await fetch('/api/dashboard/latest');
+                    const data = await response.json();
+                    this.updateLatestValues(data);
+                } catch (error) {
+                    console.error('Failed to fetch latest metrics:', error);
+                }
+            }
+
+            updateCharts(metricsData) {
+                Object.keys(metricsData).forEach(metricName => {
+                    const metric = metricsData[metricName];
+                    const chartName = metricName.split('.')[0]; // cpu, memory, disk
+                    
+                    if (this.charts[chartName] && metric.data) {
+                        const labels = metric.data.map(point => 
+                            new Date(point.timestamp).toLocaleTimeString()
+                        );
+                        const values = metric.data.map(point => point.value);
+                        
+                        this.charts[chartName].data.labels = labels;
+                        this.charts[chartName].data.datasets[0].data = values;
+                        this.charts[chartName].update('none');
+                    }
+                });
+            }
+
+            updateLatestValues(latestData) {
+                this.updateMetricValue('cpu', latestData['cpu.usage']);
+                this.updateMetricValue('memory', latestData['memory.usage_percent']);
+                this.updateMetricValue('disk', latestData['disk.usage_percent']);
+                this.updateTimestamp(new Date().toISOString());
+            }
+
+            updateMetricValue(metricType, data) {
+                const valueElement = document.getElementById(`${metricType}-value`);
+                const statusElement = document.getElementById(`${metricType}-status`);
+                
+                if (data && data.value !== undefined) {
+                    const value = Math.round(data.value * 10) / 10;
+                    valueElement.textContent = value;
+                    
+                    // Update status indicator
+                    statusElement.className = 'status-indicator ' + this.getStatusClass(value);
+                } else {
+                    valueElement.textContent = '--';
+                    statusElement.className = 'status-indicator';
+                }
+            }
+
+            getStatusClass(value) {
+                if (value < 70) return 'status-good';
+                if (value < 85) return 'status-warning';
+                return 'status-critical';
+            }
+
+            updateTimestamp(timestamp) {
+                const element = document.getElementById('last-updated');
+                const date = new Date(timestamp);
+                element.textContent = `Last updated: ${date.toLocaleString()}`;
+            }
+
+            startPolling() {
+                // Initial load
+                this.fetchMetrics();
+                this.fetchLatest();
+                
+                // Poll every 30 seconds
+                this.updateInterval = setInterval(() => {
+                    this.fetchMetrics();
+                    this.fetchLatest();
+                }, 30000);
+            }
+
+            stop() {
+                if (this.updateInterval) {
+                    clearInterval(this.updateInterval);
+                }
+                if (this.websocket) {
+                    this.websocket.close();
+                }
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.dashboard = new MetricsDashboard();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (window.dashboard) {
+                window.dashboard.stop();
+            }
+        });
+    </script>
+</body>
+</html>
