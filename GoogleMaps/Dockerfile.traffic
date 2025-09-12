@@ -1,0 +1,15 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install fastapi uvicorn requests pydantic redis
+
+# Copy traffic service
+COPY traffic_realtime_service.py .
+
+# Expose port
+EXPOSE 8084
+
+# Run traffic service
+CMD ["python", "traffic_realtime_service.py"]

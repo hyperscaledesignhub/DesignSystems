@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎯 NEW Traffic Test - Should Show Multiple Circles</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: Arial; margin: 0; padding: 20px; background: #f0f0f0; }
+        .header { background: linear-gradient(45deg, #4285f4, #34a853); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+        .controls { text-align: center; margin: 20px 0; }
+        button { 
+            padding: 15px 30px; 
+            margin: 10px; 
+            font-size: 16px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer;
+            background: #4285f4;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        button:hover { background: #3367d6; transform: translateY(-2px); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #map { height: 600px; width: 100%; border: 3px solid #333; border-radius: 10px; margin: 20px 0; }
+        .status { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin: 10px 0; 
+            border-left: 5px solid #4285f4;
+            font-family: monospace;
+        }
+        .success { border-left-color: #34a853; color: #137333; }
+        .error { border-left-color: #ea4335; color: #d33b2c; }
+        .count { font-size: 24px; font-weight: bold; color: #4285f4; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 NEW Traffic Implementation Test</h1>
+        <p>This should show MULTIPLE colored circles on the map</p>
+    </div>
+
+    <div class="controls">
+        <button onclick="testNewImplementation()">🚦 Load Traffic Circles</button>
+        <button onclick="clearAllMarkers()">🧹 Clear Map</button>
+        <button onclick="showStats()">📊 Show Stats</button>
+    </div>
+
+    <div class="status" id="status">Ready to test new traffic implementation...</div>
+    
+    <div id="map"></div>
+
+    <div class="status">
+        <h3>Expected Results:</h3>
+        <ul>
+            <li><strong>🔴 RED circles:</strong> High severity traffic (large circles)</li>
+            <li><strong>🟠 ORANGE circles:</strong> Medium severity traffic (medium circles)</li>
+            <li><strong>🟢 GREEN circles:</strong> Low severity traffic (small circles)</li>
+            <li><strong>Total circles:</strong> Up to 20 different traffic areas</li>
+        </ul>
+    </div>
+
+    <script>
+        let map;
+        let markers = [];
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([12.9716, 77.5946], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            log('🗺️ Map initialized at Bangalore coordinates');
+        }
+
+        function log(message) {
+            const statusDiv = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString();
+            statusDiv.innerHTML += `<br><span class="success">[${timestamp}] ${message}</span>`;
+        }
+
+        function logError(message) {
+            const statusDiv = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString();
+            statusDiv.innerHTML += `<br><span class="error">[${timestamp}] ❌ ${message}</span>`;
+        }
+
+        async function testNewImplementation() {
+            log('🚀 Testing NEW traffic implementation...');
+            
+            try {
+                // Clear existing markers
+                clearAllMarkers();
+                
+                // Fetch traffic data
+                const response = await fetch('http://localhost:8086/api/traffic/data?lat=12.9716&lng=77.5946&radius=10');
+                if (!response.ok) {
+                    throw new Error(`API failed: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                log(`📊 API returned ${data.active_users} users and ${data.congestion_areas.length} traffic areas`);
+                
+                let addedCount = 0;
+                
+                // Add each traffic area as a circle
+                data.congestion_areas.forEach((area, index) => {
+                    const color = getSeverityColor(area.severity);
+                    const size = getSeveritySize(area.severity);
+                    
+                    const circle = L.circle([area.lat, area.lng], {
+                        color: '#ffffff',
+                        fillColor: color,
+                        fillOpacity: 0.9,
+                        radius: size,
+                        weight: 3
+                    }).bindPopup(`
+                        <div style="text-align: center; padding: 10px;">
+                            <h3>🚦 Traffic Area #${index + 1}</h3>
+                            <p><strong>Severity:</strong> <span style="color: ${color}; font-weight: bold;">${area.severity.toUpperCase()}</span></p>
+                            <p><strong>Users:</strong> ${area.user_count}</p>
+                            <p><strong>Speed:</strong> ${area.avg_speed} km/h</p>
+                            <p><strong>Location:</strong> ${area.lat.toFixed(4)}, ${area.lng.toFixed(4)}</p>
+                        </div>
+                    `);
+                    
+                    circle.addTo(map);
+                    markers.push(circle);
+                    addedCount++;
+                    
+                    log(`✅ Added ${area.severity} circle #${index + 1} (${color}) at ${area.lat.toFixed(3)}, ${area.lng.toFixed(3)}`);
+                });
+                
+                log(`🎯 SUCCESS! Added ${addedCount} traffic circles to map`);
+                document.getElementById('status').innerHTML += `<div class="count">🎉 ${addedCount} CIRCLES DISPLAYED 🎉</div>`;
+                
+                if (addedCount === 0) {
+                    logError('No circles were added! Check API data.');
+                } else if (addedCount === 1) {
+                    logError('Only 1 circle added - should be more!');
+                } else {
+                    log(`🌟 PERFECT! Multiple circles (${addedCount}) are now visible on the map!`);
+                }
+                
+            } catch (error) {
+                logError(`Test failed: ${error.message}`);
+            }
+        }
+
+        function getSeverityColor(severity) {
+            switch (severity.toLowerCase()) {
+                case 'high': return '#FF0000';    // Red
+                case 'medium': return '#FFA500';  // Orange  
+                case 'low': return '#32CD32';     // Green
+                default: return '#808080';        // Gray
+            }
+        }
+
+        function getSeveritySize(severity) {
+            switch (severity.toLowerCase()) {
+                case 'high': return 1000;   // Large
+                case 'medium': return 700;  // Medium
+                case 'low': return 400;     // Small
+                default: return 500;        // Default
+            }
+        }
+
+        function clearAllMarkers() {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            log('🧹 Cleared all markers');
+        }
+
+        async function showStats() {
+            try {
+                const response = await fetch('http://localhost:8086/api/locations/stats');
+                const data = await response.json();
+                log(`📈 Stats: ${data.total_users} total users, simulation ${data.simulation_running ? 'RUNNING' : 'STOPPED'}`);
+            } catch (error) {
+                logError(`Stats failed: ${error.message}`);
+            }
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            initMap();
+            // Auto-test after 2 seconds
+            setTimeout(testNewImplementation, 2000);
+        };
+    </script>
+</body>
+</html>

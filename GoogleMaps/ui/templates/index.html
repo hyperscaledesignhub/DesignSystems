@@ -1,0 +1,414 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗺️ Google Maps Clone - Interactive UI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(255,255,255,0.95);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header h1 {
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .container {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .feature-card {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .feature-title {
+            color: #333;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .feature-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: auto;
+        }
+        
+        .status-success { background: #d4edda; color: #155724; }
+        .status-failed { background: #f8d7da; color: #721c24; }
+        .status-testing { background: #fff3cd; color: #856404; }
+        
+        .feature-description {
+            color: #666;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            margin-left: 0.5rem;
+        }
+        
+        .real-time-section {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .real-time-updates {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .update-item {
+            background: white;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid #667eea;
+        }
+        
+        .results-section {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .results-content {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.disconnected {
+            background: #dc3545;
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .features-grid { grid-template-columns: 1fr; }
+            .header { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗺️ Google Maps Clone - Interactive UI</h1>
+        <div class="connection-status">
+            <div class="status-dot" id="connectionStatus"></div>
+            <span id="connectionText">Connecting...</span>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-title">
+                    <span>📍 Core Location Services</span>
+                    <span class="feature-status status-testing" id="locationStatus">Ready</span>
+                </div>
+                <div class="feature-description">
+                    Test all 8 core location features: real-time tracking, current location, 
+                    history queries, proximity search, geospatial indexing, location sharing, 
+                    privacy features, and batch processing.
+                </div>
+                <button class="btn" onclick="testLocationFeatures()">Test Location Features</button>
+                <button class="btn btn-secondary" onclick="viewDocs()">API Docs</button>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-title">
+                    <span>🔄 Real-time Updates</span>
+                    <span class="feature-status status-testing" id="realtimeStatus">Connecting</span>
+                </div>
+                <div class="feature-description">
+                    Live WebSocket connection showing real-time location updates from users 
+                    across the system. Experience the power of real-time mapping.
+                </div>
+                <button class="btn" onclick="toggleRealTime()" id="realtimeBtn">Start Real-time</button>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-title">
+                    <span>⚡ Performance Monitor</span>
+                    <span class="feature-status status-success" id="perfStatus">Active</span>
+                </div>
+                <div class="feature-description">
+                    Monitor system performance including response times, throughput, 
+                    and resource usage. View metrics and health status.
+                </div>
+                <button class="btn" onclick="checkHealth()">Check Health</button>
+                <button class="btn btn-secondary" onclick="openMonitoring()">Monitoring</button>
+            </div>
+        </div>
+        
+        <div class="real-time-section">
+            <h2>📡 Real-time Location Updates</h2>
+            <div class="real-time-updates" id="realtimeUpdates">
+                <div class="update-item">Waiting for connection...</div>
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <h2>📊 Test Results</h2>
+            <div class="results-content" id="testResults">
+Click "Test Location Features" to run comprehensive tests of all 8 core location services.
+
+Features that will be tested:
+✅ Real-time Location Tracking - High-throughput batch processing  
+✅ Current Location Retrieval - <50ms response time
+✅ Location History Queries - Time-based location data  
+✅ Proximity Search - Find nearby users/places
+✅ Geospatial Indexing - Geohashing for efficient queries
+✅ Location Sharing - Share location with others
+✅ Location Privacy - Anonymous mode & data encryption
+✅ Batch Location Updates - Efficient bulk processing
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let websocket = null;
+        let realtimeActive = false;
+        
+        // Initialize WebSocket connection
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            websocket = new WebSocket(wsUrl);
+            
+            websocket.onopen = function() {
+                document.getElementById('connectionStatus').classList.remove('disconnected');
+                document.getElementById('connectionText').textContent = 'Connected to UI Server';
+                document.getElementById('realtimeStatus').textContent = 'Connected';
+                document.getElementById('realtimeStatus').className = 'feature-status status-success';
+            };
+            
+            websocket.onmessage = function(event) {
+                if (realtimeActive) {
+                    const update = JSON.parse(event.data);
+                    addRealtimeUpdate(update);
+                }
+            };
+            
+            websocket.onclose = function() {
+                document.getElementById('connectionStatus').classList.add('disconnected');
+                document.getElementById('connectionText').textContent = 'Disconnected';
+                document.getElementById('realtimeStatus').textContent = 'Disconnected';
+                document.getElementById('realtimeStatus').className = 'feature-status status-failed';
+                setTimeout(initWebSocket, 5000); // Reconnect after 5 seconds
+            };
+        }
+        
+        // Add real-time update to display
+        function addRealtimeUpdate(update) {
+            const container = document.getElementById('realtimeUpdates');
+            const updateDiv = document.createElement('div');
+            updateDiv.className = 'update-item';
+            updateDiv.innerHTML = `
+                <strong>${update.user_id}</strong><br>
+                📍 ${update.latitude.toFixed(4)}, ${update.longitude.toFixed(4)}<br>
+                🕒 ${new Date(update.timestamp).toLocaleTimeString()}
+                <span style="float: right;">±${update.accuracy}m</span>
+            `;
+            
+            container.insertBefore(updateDiv, container.firstChild);
+            
+            // Keep only last 10 updates
+            while (container.children.length > 10) {
+                container.removeChild(container.lastChild);
+            }
+        }
+        
+        // Toggle real-time updates
+        function toggleRealTime() {
+            realtimeActive = !realtimeActive;
+            const btn = document.getElementById('realtimeBtn');
+            
+            if (realtimeActive) {
+                btn.textContent = 'Stop Real-time';
+                btn.style.background = '#dc3545';
+            } else {
+                btn.textContent = 'Start Real-time';
+                btn.style.background = '';
+            }
+        }
+        
+        // Test location features
+        async function testLocationFeatures() {
+            const statusEl = document.getElementById('locationStatus');
+            const resultsEl = document.getElementById('testResults');
+            
+            statusEl.textContent = 'Testing...';
+            statusEl.className = 'feature-status status-testing';
+            
+            resultsEl.textContent = 'Testing all 8 core location features...\n\n';
+            
+            try {
+                const response = await fetch('/api/demo/location-features');
+                const results = await response.json();
+                
+                let output = `🗺️ CORE LOCATION SERVICES TEST RESULTS\n`;
+                output += `Timestamp: ${results.timestamp}\n`;
+                output += `${'='.repeat(50)}\n\n`;
+                
+                results.features_tested.forEach((test, index) => {
+                    const emoji = test.status === 'success' ? '✅' : 
+                                 test.status === 'failed' ? '❌' : '🔄';
+                    output += `${index + 1}. ${emoji} ${test.feature}\n`;
+                    output += `   Status: ${test.status.toUpperCase()}\n`;
+                    
+                    if (test.result && typeof test.result === 'object') {
+                        output += `   Result: ${JSON.stringify(test.result, null, 2)}\n`;
+                    } else if (test.error) {
+                        output += `   Error: ${test.error}\n`;
+                    }
+                    output += '\n';
+                });
+                
+                const successCount = results.features_tested.filter(t => t.status === 'success').length;
+                output += `${'='.repeat(50)}\n`;
+                output += `🎉 SUMMARY: ${successCount}/${results.features_tested.length} features tested successfully!\n`;
+                
+                resultsEl.textContent = output;
+                
+                statusEl.textContent = `${successCount}/${results.features_tested.length} Passed`;
+                statusEl.className = successCount === results.features_tested.length ? 
+                    'feature-status status-success' : 'feature-status status-failed';
+                
+            } catch (error) {
+                resultsEl.textContent = `❌ Test failed: ${error.message}`;
+                statusEl.textContent = 'Failed';
+                statusEl.className = 'feature-status status-failed';
+            }
+        }
+        
+        // Check system health
+        async function checkHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const health = await response.json();
+                
+                const resultsEl = document.getElementById('testResults');
+                resultsEl.textContent = `🔍 SYSTEM HEALTH CHECK\n${JSON.stringify(health, null, 2)}`;
+                
+            } catch (error) {
+                const resultsEl = document.getElementById('testResults');
+                resultsEl.textContent = `❌ Health check failed: ${error.message}`;
+            }
+        }
+        
+        // Open API documentation
+        function viewDocs() {
+            window.open(`${window.location.protocol}//${window.location.hostname}:8080/docs`, '_blank');
+        }
+        
+        // Open monitoring dashboard
+        function openMonitoring() {
+            window.open(`${window.location.protocol}//${window.location.hostname}:3000`, '_blank');
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initWebSocket();
+        });
+    </script>
+</body>
+</html>
+    

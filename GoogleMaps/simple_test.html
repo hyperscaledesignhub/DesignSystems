@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SUPER SIMPLE TEST</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 15px 30px; font-size: 18px; margin: 10px; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 SUPER SIMPLE API TEST</h1>
+    
+    <button onclick="testAPI()">📡 Test API</button>
+    <button onclick="clearResults()">🧹 Clear</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            document.getElementById('results').appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testAPI() {
+            log('🚀 Starting API test...', 'success');
+            
+            try {
+                // Test 1: Basic connection
+                log('📡 Testing API connection...');
+                const response = await fetch('http://localhost:8086/api/traffic/data?lat=12.9716&lng=77.5946&radius=10');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                log('✅ API connection successful', 'success');
+                
+                // Test 2: Parse data
+                const data = await response.json();
+                log('✅ Data parsing successful', 'success');
+                
+                // Test 3: Show raw data
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(data, null, 2);
+                document.getElementById('results').appendChild(pre);
+                
+                // Test 4: Show summary
+                log(`📊 SUMMARY:`, 'success');
+                log(`   • Active Users: ${data.active_users}`, 'success');
+                log(`   • Traffic Level: ${data.traffic_level}`, 'success');
+                log(`   • Congestion Areas: ${data.congestion_areas.length}`, 'success');
+                
+                // Test 5: Show first few areas
+                if (data.congestion_areas.length > 0) {
+                    log(`🎯 FIRST 3 AREAS:`, 'success');
+                    data.congestion_areas.slice(0, 3).forEach((area, i) => {
+                        log(`   ${i+1}. ${area.severity} - ${area.user_count} users at (${area.lat}, ${area.lng})`, 'success');
+                    });
+                } else {
+                    log('⚠️ No congestion areas found!', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ ERROR: ${error.message}`, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Auto-run test
+        setTimeout(testAPI, 1000);
+    </script>
+</body>
+</html>

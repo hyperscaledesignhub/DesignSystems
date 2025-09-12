@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Traffic Test - Fixed</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; }
+        #result { border: 1px solid #ccc; padding: 10px; margin: 10px 0; max-height: 400px; overflow-y: auto; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Traffic API Test - Fixed</h1>
+    
+    <button onclick="testBangaloreTraffic()">Test Bangalore Traffic (Simulation Center)</button>
+    <button onclick="testStartSimulation()">Start New Simulation</button>
+    <button onclick="testStats()">Test Stats</button>
+    <button onclick="clearResults()">Clear Results</button>
+    
+    <div id="result">Results will appear here...</div>
+    
+    <script>
+        function log(msg, isError = false) {
+            const div = document.createElement('div');
+            div.innerHTML = '<strong>' + new Date().toLocaleTimeString() + ':</strong> ' + msg;
+            div.className = isError ? 'error' : 'success';
+            document.getElementById('result').appendChild(div);
+            document.getElementById('result').scrollTop = document.getElementById('result').scrollHeight;
+        }
+        
+        function clearResults() {
+            document.getElementById('result').innerHTML = '<p>Results cleared...</p>';
+        }
+        
+        async function testStats() {
+            log('Testing location stats API...');
+            try {
+                const response = await fetch('http://localhost:8086/api/locations/stats');
+                const data = await response.json();
+                log('✅ Stats: ' + JSON.stringify(data, null, 2));
+            } catch (error) {
+                log('❌ Stats Error: ' + error.message, true);
+            }
+        }
+        
+        async function testBangaloreTraffic() {
+            log('Testing Bangalore traffic data (simulation center)...');
+            try {
+                // Test at Bangalore coordinates where simulation is running
+                const response = await fetch('http://localhost:8086/api/traffic/data?lat=12.9716&lng=77.5946&radius=5');
+                const data = await response.json();
+                log('✅ Bangalore Traffic Data:');
+                log(`   - Active users: ${data.active_users}`);
+                log(`   - Traffic level: ${data.traffic_level}`);
+                log(`   - Average speed: ${data.average_speed} km/h`);
+                log(`   - Congestion areas: ${data.congestion_areas.length}`);
+                
+                if (data.congestion_areas.length > 0) {
+                    log(`   - Sample area: lat=${data.congestion_areas[0].lat}, lng=${data.congestion_areas[0].lng}, severity=${data.congestion_areas[0].severity}, users=${data.congestion_areas[0].user_count}`);
+                }
+            } catch (error) {
+                log('❌ Bangalore Traffic Error: ' + error.message, true);
+            }
+        }
+        
+        async function testStartSimulation() {
+            log('Testing start simulation API...');
+            try {
+                const response = await fetch('http://localhost:8086/api/traffic/start-simulation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        center_lat: 12.9716,
+                        center_lng: 77.5946,
+                        radius_km: 5.0
+                    })
+                });
+                const data = await response.json();
+                log('✅ Simulation Started: ' + JSON.stringify(data));
+                
+                // Wait a moment then test traffic data
+                setTimeout(testBangaloreTraffic, 2000);
+                
+            } catch (error) {
+                log('❌ Start Simulation Error: ' + error.message, true);
+            }
+        }
+        
+        // Auto-test on page load
+        window.onload = function() {
+            log('🚀 Page loaded - Testing APIs automatically...');
+            setTimeout(testStats, 500);
+            setTimeout(testBangaloreTraffic, 1000);
+        };
+    </script>
+</body>
+</html>

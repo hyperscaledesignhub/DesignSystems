@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Traffic Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; }
+        #result { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Traffic API Test</h1>
+    
+    <button onclick="testStats()">Test Stats</button>
+    <button onclick="testTrafficData()">Test Traffic Data</button>
+    <button onclick="testUpdateTraffic()">Test Update Traffic</button>
+    
+    <div id="result">Results will appear here...</div>
+    
+    <script>
+        function log(msg) {
+            document.getElementById('result').innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + msg + '</div>';
+        }
+        
+        async function testStats() {
+            log('Testing stats API...');
+            try {
+                const response = await fetch('http://localhost:8086/api/locations/stats');
+                const data = await response.json();
+                log('✅ Stats: ' + JSON.stringify(data, null, 2));
+            } catch (error) {
+                log('❌ Stats Error: ' + error.message);
+            }
+        }
+        
+        async function testTrafficData() {
+            log('Testing traffic data API...');
+            try {
+                const response = await fetch('http://localhost:8086/api/traffic/data?lat=12.9716&lng=77.5946&radius=5');
+                const data = await response.json();
+                log('✅ Traffic Data: Active users=' + data.active_users + ', Level=' + data.traffic_level + ', Areas=' + data.congestion_areas.length);
+            } catch (error) {
+                log('❌ Traffic Data Error: ' + error.message);
+            }
+        }
+        
+        async function testUpdateTraffic() {
+            log('Testing update traffic API...');
+            try {
+                const response = await fetch('http://localhost:8086/api/traffic/start-simulation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        center_lat: 37.7749,
+                        center_lng: -122.4194,
+                        radius_km: 5.0
+                    })
+                });
+                const data = await response.json();
+                log('✅ Update Traffic: ' + JSON.stringify(data));
+            } catch (error) {
+                log('❌ Update Traffic Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

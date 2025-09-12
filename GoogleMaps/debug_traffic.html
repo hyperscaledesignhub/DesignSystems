@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚦 Traffic Debug - Live Test</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { font-family: Arial; margin: 0; padding: 20px; }
+        #map { height: 500px; width: 100%; border: 2px solid #333; }
+        .controls { margin: 20px 0; text-align: center; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+        .info { background: #f0f0f0; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .highlight { background: yellow; padding: 2px 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚦 Traffic Debug - Live API Test</h1>
+    
+    <div class="controls">
+        <button onclick="testAPI()">🔄 Test API</button>
+        <button onclick="loadTrafficOnMap()">🗺️ Load Traffic on Map</button>
+        <button onclick="clearMap()">🧹 Clear Map</button>
+    </div>
+
+    <div id="info" class="info">
+        <div id="status">Ready to test...</div>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        let map;
+        let trafficLayer;
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([12.9716, 77.5946], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            trafficLayer = L.layerGroup();
+            document.getElementById('status').innerHTML = '🗺️ Map initialized at Bangalore (12.9716, 77.5946)';
+        }
+
+        function log(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            statusDiv.innerHTML += `<br><span class="${className}">[${timestamp}] ${message}</span>`;
+        }
+
+        async function testAPI() {
+            log('🔍 Testing traffic API...');
+            
+            try {
+                const response = await fetch('http://localhost:8086/api/traffic/data?lat=12.9716&lng=77.5946&radius=10');
+                const data = await response.json();
+                
+                log(`✅ API Response: ${data.active_users} users, ${data.congestion_areas.length} areas`);
+                log(`📊 Traffic Level: ${data.traffic_level}, Speed: ${data.average_speed} km/h`);
+                
+                if (data.congestion_areas.length > 0) {
+                    log(`🎯 Sample areas:`);
+                    data.congestion_areas.slice(0, 5).forEach((area, i) => {
+                        log(`   ${i+1}. ${area.severity} severity - ${area.user_count} users at (${area.lat.toFixed(4)}, ${area.lng.toFixed(4)})`);
+                    });
+                } else {
+                    log('⚠️ No congestion areas found!', true);
+                }
+                
+                return data;
+            } catch (error) {
+                log(`❌ API Error: ${error.message}`, true);
+                return null;
+            }
+        }
+
+        async function loadTrafficOnMap() {
+            log('🗺️ Loading traffic data on map...');
+            
+            const data = await testAPI();
+            if (!data) return;
+            
+            // Clear existing traffic layer
+            trafficLayer.clearLayers();
+            
+            let circleCount = 0;
+            data.congestion_areas.forEach((area, index) => {
+                const color = getTrafficColor(area.severity);
+                
+                const circle = L.circle([area.lat, area.lng], {
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.8,
+                    radius: 800, // Same as UI
+                    weight: 4
+                }).bindPopup(`
+                    <div style="text-align: center;">
+                        <b>🚦 Traffic Area ${index + 1}</b><br>
+                        <b>Severity:</b> <span class="highlight">${area.severity}</span><br>
+                        <b>Users:</b> ${area.user_count}<br>
+                        <b>Speed:</b> ${area.avg_speed} km/h<br>
+                        <b>Location:</b> ${area.lat.toFixed(4)}, ${area.lng.toFixed(4)}
+                    </div>
+                `);
+                
+                trafficLayer.addLayer(circle);
+                circleCount++;
+            });
+            
+            trafficLayer.addTo(map);
+            log(`✅ Added ${circleCount} traffic circles to map`);
+            
+            if (circleCount === 0) {
+                log('❌ No circles were added to map!', true);
+            }
+        }
+
+        function getTrafficColor(severity) {
+            switch(severity.toLowerCase()) {
+                case 'high': return '#ea4335'; // Red
+                case 'medium': return '#fbbc05'; // Yellow  
+                case 'low': return '#34a853'; // Green
+                default: return '#9aa0a6'; // Gray
+            }
+        }
+
+        function clearMap() {
+            if (trafficLayer) {
+                trafficLayer.clearLayers();
+                log('🧹 Map cleared');
+            }
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            initMap();
+            
+            // Auto-test after 2 seconds
+            setTimeout(() => {
+                log('🚀 Auto-testing API...');
+                loadTrafficOnMap();
+            }, 2000);
+        };
+    </script>
+</body>
+</html>

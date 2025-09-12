@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # Shared Infrastructure
+  redis:
+    image: redis:7-alpine
+    container_name: maps-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - maps-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Main API Gateway
+  api-gateway:
+    build: .
+    container_name: maps-api-gateway
+    command: ["python", "simple_api.py"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - maps-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Navigation Service
+  navigation-service:
+    build: .
+    container_name: maps-navigation
+    command: ["python", "navigation_service.py"]
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - maps-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AI/ML Service
+  ai-ml-service:
+    build: .
+    container_name: maps-ai-ml
+    command: ["python", "ai_ml_service.py"]
+    ports:
+      - "8082:8082"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - maps-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Places & Business Service
+  places-service:
+    build: .
+    container_name: maps-places
+    command: ["python", "places_business_service.py"]
+    ports:
+      - "8083:8083"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - maps-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Traffic & Real-Time Service
+  traffic-service:
+    build: .
+    container_name: maps-traffic
+    command: ["python", "traffic_realtime_service.py"]
+    ports:
+      - "8084:8084"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - maps-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Maps & Visualization Service
+  maps-service:
+    build: .
+    container_name: maps-visualization
+    command: ["python", "maps_visualization_service.py"]
+    ports:
+      - "8085:8085"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - maps-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Web UI Service
+  web-ui:
+    build: 
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: maps-web-ui
+    ports:
+      - "3002:3002"
+    depends_on:
+      - api-gateway
+      - navigation-service
+      - ai-ml-service
+      - places-service
+      - traffic-service
+      - maps-service
+    networks:
+      - maps-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis_data:
+
+networks:
+  maps-network:
+    driver: bridge
+    name: maps-network

@@ -1,0 +1,15 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install fastapi uvicorn requests pydantic
+
+# Copy location service
+COPY location_service.py .
+
+# Expose port
+EXPOSE 8086
+
+# Run location service
+CMD ["python", "location_service.py"]
