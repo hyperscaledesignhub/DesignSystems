@@ -1,0 +1,119 @@
+# Prometheus Configuration for Google Maps Clone
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alerting rules
+rule_files:
+  - "rules/*.yml"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Gateway metrics
+  - job_name: 'api-gateway'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api-gateway:9876']
+    scrape_interval: 5s
+    scrape_timeout: 5s
+
+  # ML Model Server metrics
+  - job_name: 'ml-server'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ml-server:8001']
+    scrape_interval: 10s
+
+  # Redis metrics (if redis_exporter is available)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Cassandra metrics (if cassandra_exporter is available)
+  - job_name: 'cassandra'
+    static_configs:
+      - targets: ['cassandra:7070']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Elasticsearch metrics
+  - job_name: 'elasticsearch'
+    static_configs:
+      - targets: ['elasticsearch:9200']
+    metrics_path: '/_prometheus/metrics'
+    scrape_interval: 30s
+
+  # PostgreSQL metrics (if postgres_exporter is available)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:9187']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Neo4j metrics
+  - job_name: 'neo4j'
+    static_configs:
+      - targets: ['neo4j:2004']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Nginx metrics (if nginx-prometheus-exporter is available)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:9113']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # Kafka metrics (if kafka_exporter is available)
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9308']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Node exporter (system metrics)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 15s
+
+  # Custom application metrics
+  - job_name: 'location-service'
+    static_configs:
+      - targets: ['api-gateway:9876']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'location-service'
+
+  - job_name: 'navigation-service'
+    static_configs:
+      - targets: ['api-gateway:9876']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: 'navigation-service'
+
+  # Health check endpoints
+  - job_name: 'health-checks'
+    metrics_path: '/api/v1/health'
+    static_configs:
+      - targets: ['api-gateway:8080']
+    scrape_interval: 60s

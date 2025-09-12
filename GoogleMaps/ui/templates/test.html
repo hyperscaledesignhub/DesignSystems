@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗺️ Google Maps Clone - Real Database Testing Interface</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(255,255,255,0.95);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-bar {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.disconnected {
+            background: #dc3545;
+            animation: none;
+        }
+        
+        .container {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .testing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .features-section {
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .feature-test {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #e9ecef;
+        }
+        
+        .feature-test h4 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .feature-inputs {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        input, select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        input[type="number"] {
+            width: 80px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .btn-small {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8rem;
+        }
+        
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-warning { background: #ffc107; color: #333; }
+        
+        .test-result {
+            background: white;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            border-left: 4px solid #667eea;
+            font-family: monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .test-result.success { border-left-color: #28a745; }
+        .test-result.error { border-left-color: #dc3545; }
+        
+        .real-time-section {
+            grid-column: 1 / -1;
+            background: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .real-time-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        
+        .system-stats {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .database-status {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .db-card {
+            background: white;
+            border-radius: 6px;
+            padding: 0.75rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+            text-align: center;
+        }
+        
+        .db-card.healthy { border-top: 3px solid #28a745; }
+        .db-card.error { border-top: 3px solid #dc3545; }
+        
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        @media (max-width: 1200px) {
+            .testing-grid { grid-template-columns: 1fr; }
+            .real-time-grid { grid-template-columns: 1fr; }
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .header { padding: 1rem; }
+            .status-bar { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗺️ Google Maps Clone - Real Database Testing Interface</h1>
+        <div class="status-bar">
+            <div class="connection-status">
+                <div class="status-dot" id="connectionStatus"></div>
+                <span id="connectionText">Connecting...</span>
+            </div>
+            <div class="connection-status">
+                <span>🔗 API: http://localhost:8080</span>
+            </div>
+            <div class="connection-status">
+                <span>🖥️ UI: http://localhost:3002</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="database-status">
+            <div class="db-card healthy" id="redisStatus">
+                <strong>📊 Redis</strong><br>
+                <span id="redisHealth">Checking...</span>
+            </div>
+            <div class="db-card healthy" id="postgresStatus">
+                <strong>🗄️ PostgreSQL</strong><br>
+                <span id="postgresHealth">Checking...</span>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <button class="btn btn-success" onclick="testAllFeatures()">🧪 Test All Features</button>
+            <button class="btn btn-warning" onclick="clearAllData()">🗑️ Clear Test Data</button>
+            <button class="btn" onclick="refreshSystemStats()">📊 Refresh Stats</button>
+            <button class="btn" onclick="openApiDocs()">📖 API Docs</button>
+        </div>
+        
+        <div class="testing-grid">
+            <div class="features-section">
+                <h2>🧪 Individual Feature Testing</h2>
+                
+                <!-- Feature 1 & 8: Batch Location Updates -->
+                <div class="feature-test">
+                    <h4>
+                        📍 Real-time Location Tracking + Batch Updates
+                        <span class="btn btn-small" onclick="testBatchUpdate()" id="batchBtn">Test</span>
+                    </h4>
+                    <div class="feature-inputs">
+                        <div class="input-group">
+                            <label>User ID:</label>
+                            <input type="text" id="batchUserId" value="test_user_live" placeholder="User ID">
+                            <label>Lat:</label>
+                            <input type="number" id="batchLat" value="37.7749" step="0.0001" placeholder="Latitude">
+                            <label>Lng:</label>
+                            <input type="number" id="batchLng" value="-122.4194" step="0.0001" placeholder="Longitude">
+                        </div>
+                    </div>
+                    <div class="test-result" id="batchResult">Ready to test batch location updates with Redis storage</div>
+                </div>
+                
+                <!-- Feature 2: Current Location -->
+                <div class="feature-test">
+                    <h4>
+                        ⚡ Current Location Retrieval (&lt;50ms)
+                        <span class="btn btn-small" onclick="testCurrentLocation()" id="currentBtn">Test</span>
+                    </h4>
+                    <div class="feature-inputs">
+                        <div class="input-group">
+                            <label>User ID:</label>
+                            <input type="text" id="currentUserId" value="test_user_live" placeholder="User ID">
+                        </div>
+                    </div>
+                    <div class="test-result" id="currentResult">Ready to test current location retrieval from Redis</div>
+                </div>
+                
+                <!-- Feature 3: Location History -->
+                <div class="feature-test">
+                    <h4>
+                        📜 Location History Queries
+                        <span class="btn btn-small" onclick="testLocationHistory()" id="historyBtn">Test</span>
+                    </h4>
+                    <div class="feature-inputs">
+                        <div class="input-group">
+                            <label>User ID:</label>
+                            <input type="text" id="historyUserId" value="test_user_live" placeholder="User ID">
+                            <label>Limit:</label>
+                            <input type="number" id="historyLimit" value="10" min="1" max="100">
+                        </div>
+                    </div>
+                    <div class="test-result" id="historyResult">Ready to test location history from Redis</div>
+                </div>
+                
+                <!-- Feature 4: Proximity Search -->
+                <div class="feature-test">
+                    <h4>
+                        🔍 Proximity Search
+                        <span class="btn btn-small" onclick="testProximitySearch()" id="proximityBtn">Test</span>
+                    </h4>
+                    <div class="feature-inputs">
+                        <div class="input-group">
+                            <label>User ID:</label>
+                            <input type="text" id="proximityUserId" value="test_user_live" placeholder="User ID">
+                            <label>Radius (km):</label>
+                            <input type="number" id="proximityRadius" value="5" min="0.1" max="50" step="0.1">
+                        </div>
+                    </div>
+                    <div class="test-result" id="proximityResult">Ready to test proximity search with geospatial queries</div>
+                </div>
+                
+                <!-- Feature 5: Geospatial Indexing -->
+                <div class="feature-test">
+                    <h4>
+                        🗺️ Geospatial Indexing (Geohashing)
+                        <span class="btn btn-small" onclick="testGeohashing()" id="geohashBtn">Test</span>
+                    </h4>
+                    <div class="feature-inputs">
+                        <div class="input-group">
+                            <label>User ID:</label>
+                            <input type="text" id="geohashUserId" value="test_user_live" placeholder="User ID">
+                        </div>
+                    </div>
+                    <div class="test-result" id="geohashResult">Ready to test geohash indexing with Redis</div>
+                </div>
+            </div>
+            
+            <div class="features-section">
+                <h2>📊 System Monitoring</h2>
+                
+                <div class="system-stats" id="systemStats">
+                    <strong>System Statistics:</strong><br>
+                    Loading system stats...
+                </div>
+                
+                <h3 style="margin: 1rem 0;">🔥 Quick Tests</h3>
+                
+                <div class="feature-test">
+                    <h4>
+                        ❤️ Health Check
+                        <span class="btn btn-small btn-success" onclick="testHealthCheck()" id="healthBtn">Check</span>
+                    </h4>
+                    <div class="test-result" id="healthResult">Ready to check system health</div>
+                </div>
+                
+                <div class="feature-test">
+                    <h4>
+                        📈 Database Performance
+                        <span class="btn btn-small" onclick="runPerformanceTest()" id="perfBtn">Test</span>
+                    </h4>
+                    <div class="test-result" id="perfResult">Ready to run performance benchmark</div>
+                </div>
+                
+                <div class="feature-test">
+                    <h4>
+                        🔄 Real-time WebSocket
+                        <span class="btn btn-small" onclick="toggleWebSocket()" id="wsBtn">Connect</span>
+                    </h4>
+                    <div class="test-result" id="wsResult">Ready to test WebSocket connectivity</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="real-time-section">
+            <h2>📡 Live Activity Monitor</h2>
+            <div class="real-time-grid">
+                <div>
+                    <h3>🔄 Real-time Location Updates</h3>
+                    <div class="test-result" id="liveUpdates" style="height: 300px;">
+                        Waiting for location updates...
+                    </div>
+                </div>
+                <div>
+                    <h3>📊 Live System Metrics</h3>
+                    <div class="test-result" id="liveMetrics" style="height: 300px;">
+                        System metrics will appear here...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let websocket = null;
+        let isWebSocketConnected = false;
+        let testRunning = false;
+        
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSystemHealth();
+            refreshSystemStats();
+            setInterval(refreshSystemStats, 30000); // Update every 30 seconds
+        });
+        
+        // System health check
+        async function checkSystemHealth() {
+            try {
+                const response = await fetch('/api/health');
+                const health = await response.json();
+                
+                document.getElementById('connectionStatus').classList.remove('disconnected');
+                document.getElementById('connectionText').textContent = health.ui_status === 'healthy' ? 'UI Healthy' : 'UI Issues';
+                
+                // Update database status
+                const backendStatus = health.backend_status;
+                if (backendStatus && backendStatus.services) {
+                    updateDbStatus('redisStatus', 'redisHealth', backendStatus.services.redis);
+                    updateDbStatus('postgresStatus', 'postgresHealth', backendStatus.services.postgres);
+                }
+                
+            } catch (error) {
+                document.getElementById('connectionStatus').classList.add('disconnected');
+                document.getElementById('connectionText').textContent = 'Connection Error';
+            }
+        }
+        
+        function updateDbStatus(cardId, textId, status) {
+            const card = document.getElementById(cardId);
+            const text = document.getElementById(textId);
+            
+            if (status === 'healthy') {
+                card.className = 'db-card healthy';
+                text.textContent = '✅ Connected';
+            } else {
+                card.className = 'db-card error';
+                text.textContent = '❌ ' + (status || 'Disconnected');
+            }
+        }
+        
+        // Refresh system stats
+        async function refreshSystemStats() {
+            try {
+                const response = await fetch('/api/test/individual-feature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'system_stats', params: {} })
+                });
+                
+                const data = await response.json();
+                const stats = data.result;
+                
+                if (stats && !stats.error) {
+                    const statsText = `📊 Database Stats:
+Redis Memory: ${stats.database_stats?.redis_used_memory || 'N/A'}
+Redis Commands: ${stats.database_stats?.redis_total_commands || 'N/A'}
+Connected Clients: ${stats.database_stats?.redis_connected_clients || 'N/A'}
+
+📱 Application Stats:
+Active Users: ${stats.application_stats?.active_users || 0}
+Location Records: ${stats.application_stats?.total_location_records || 0}
+Geohash Cells: ${stats.application_stats?.geohash_cells || 0}
+
+⏰ Last Updated: ${new Date().toLocaleTimeString()}`;
+                    
+                    document.getElementById('systemStats').textContent = statsText;
+                    
+                    // Update live metrics
+                    document.getElementById('liveMetrics').textContent = `🔥 Live System Metrics:
+
+Active Users: ${stats.application_stats?.active_users || 0}
+Location Records: ${stats.application_stats?.total_location_records || 0}
+Redis Memory: ${stats.database_stats?.redis_used_memory || 'N/A'}
+Redis Commands: ${stats.database_stats?.redis_total_commands || 'N/A'}
+Geohash Cells: ${stats.application_stats?.geohash_cells || 0}
+
+Last Refresh: ${new Date().toLocaleString()}`;
+                }
+            } catch (error) {
+                console.error('Failed to refresh stats:', error);
+            }
+        }
+        
+        // Individual feature tests
+        async function testBatchUpdate() {
+            const btn = document.getElementById('batchBtn');
+            const result = document.getElementById('batchResult');
+            
+            btn.textContent = 'Testing...';
+            btn.disabled = true;
+            
+            const userId = document.getElementById('batchUserId').value;
+            const lat = parseFloat(document.getElementById('batchLat').value);
+            const lng = parseFloat(document.getElementById('batchLng').value);
+            
+            try {
+                const response = await fetch('/api/test/individual-feature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'batch_update',
+                        params: {
+                            user_id: userId,
+                            locations: [
+                                { latitude: lat, longitude: lng, accuracy: 5.0 },
+                                { latitude: lat + 0.001, longitude: lng + 0.001, accuracy: 8.0 }
+                            ],
+                            anonymous: false
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.result.status === 'success') {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ SUCCESS: Batch Location Update
+User: ${data.result.user_id}
+Locations Processed: ${data.result.processed_count}
+Processing Time: ${data.result.processing_time_ms}ms
+Database: ${data.result.database}
+Batch ID: ${data.result.batch_id}
+
+Sample Location:
+Lat: ${data.result.locations[0]?.latitude}
+Lng: ${data.result.locations[0]?.longitude}
+Timestamp: ${data.result.locations[0]?.timestamp}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ FAILED: ${JSON.stringify(data.result || data.error, null, 2)}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ ERROR: ${error.message}`;
+            }
+            
+            btn.textContent = 'Test';
+            btn.disabled = false;
+            
+            // Auto-refresh stats after successful update
+            if (result.className.includes('success')) {
+                setTimeout(refreshSystemStats, 1000);
+            }
+        }
+        
+        async function testCurrentLocation() {
+            const btn = document.getElementById('currentBtn');
+            const result = document.getElementById('currentResult');
+            
+            btn.textContent = 'Testing...';
+            btn.disabled = true;
+            
+            const userId = document.getElementById('currentUserId').value;
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch('/api/test/individual-feature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'current_location',
+                        params: { user_id: userId }
+                    })
+                });
+                
+                const data = await response.json();
+                const endTime = performance.now();
+                const uiLatency = Math.round((endTime - startTime) * 100) / 100;
+                
+                if (data.status === 'success' && data.result.found) {
+                    const isFast = data.result.response_time_ms < 50;
+                    result.className = isFast ? 'test-result success' : 'test-result error';
+                    result.textContent = `${isFast ? '✅ SUCCESS' : '⚠️ SLOW'}: Current Location Retrieval
+User: ${data.result.user_id}
+Found: ${data.result.found}
+API Response Time: ${data.result.response_time_ms}ms ${isFast ? '(✅ <50ms)' : '(❌ >50ms)'}
+UI Latency: ${uiLatency}ms
+Database: ${data.result.database}
+
+Location Data:
+Lat: ${data.result.location.latitude}
+Lng: ${data.result.location.longitude}
+Accuracy: ${data.result.location.accuracy}m
+Last Updated: ${data.result.location.timestamp}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ NOT FOUND: User '${userId}' has no current location
+Try running a batch update first to create location data.`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ ERROR: ${error.message}`;
+            }
+            
+            btn.textContent = 'Test';
+            btn.disabled = false;
+        }
+        
+        async function testLocationHistory() {
+            const btn = document.getElementById('historyBtn');
+            const result = document.getElementById('historyResult');
+            
+            btn.textContent = 'Testing...';
+            btn.disabled = true;
+            
+            const userId = document.getElementById('historyUserId').value;
+            const limit = parseInt(document.getElementById('historyLimit').value);
+            
+            try {
+                const response = await fetch('/api/test/individual-feature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'location_history',
+                        params: { user_id: userId, limit: limit }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ SUCCESS: Location History Query
+User: ${data.result.user_id}
+Records Found: ${data.result.count}
+Database: ${data.result.database}
+Time Filtered: ${data.result.filtered}
+
+Recent Locations:
+${data.result.locations.map((loc, i) => 
+    `${i+1}. ${loc.latitude}, ${loc.longitude} (${loc.timestamp})`
+).join('\\n')}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ FAILED: ${JSON.stringify(data.result || data.error, null, 2)}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ ERROR: ${error.message}`;
+            }
+            
+            btn.textContent = 'Test';
+            btn.disabled = false;
+        }
+        
+        async function testProximitySearch() {
+            const btn = document.getElementById('proximityBtn');
+            const result = document.getElementById('proximityResult');
+            
+            btn.textContent = 'Testing...';
+            btn.disabled = true;
+            
+            const userId = document.getElementById('proximityUserId').value;
+            const radius = parseFloat(document.getElementById('proximityRadius').value);
+            
+            try {
+                const response = await fetch('/api/test/individual-feature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'nearby_search',
+                        params: { user_id: userId, radius_km: radius }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success' && !data.result.error) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ SUCCESS: Proximity Search
+User: ${data.result.user_id}
+Search Center: ${data.result.search_center.latitude}, ${data.result.search_center.longitude}
+Search Radius: ${data.result.radius_km}km
+Nearby Users Found: ${data.result.count}
+Database: ${data.result.database}
+
+${data.result.nearby_users.length > 0 ? 
+    'Nearby Users:\\n' + data.result.nearby_users.map(user => 
+        `• ${user.user_id}: ${user.distance_km}km away`
+    ).join('\\n') : 
+    'No other users found within search radius.'
+}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ ERROR: ${data.result?.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ ERROR: ${error.message}`;
+            }
+            
+            btn.textContent = 'Test';
+            btn.disabled = false;
+        }
+        
+        async function testGeohashing() {
+            const btn = document.getElementById('geohashBtn');
+            const result = document.getElementById('geohashResult');
+            
+            btn.textContent = 'Testing...';
+            btn.disabled = true;
+            
+            const userId = document.getElementById('geohashUserId').value;
+            
+            try {
+                const response = await fetch('/api/test/individual-feature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'geohash_info',
+                        params: { user_id: userId }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success' && !data.result.error) {
+                    result.className = 'test-result success';
+                    result.textContent = `✅ SUCCESS: Geospatial Indexing
+User: ${data.result.user_id}
+Location: ${data.result.location.latitude}, ${data.result.location.longitude}
+Database: ${data.result.database}
+
+Geohash Precision Levels:
+${Object.entries(data.result.geohashes).map(([level, hash]) => 
+    `${level.replace('precision_', '')}: ${hash}`
+).join('\\n')}
+
+Current Cell: ${data.result.current_cell}
+Users in Same Cell: ${data.result.users_in_same_cell.length}
+Cell Population: ${data.result.cell_population}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ ERROR: ${data.result?.error || 'User location not found'}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ ERROR: ${error.message}`;
+            }
+            
+            btn.textContent = 'Test';
+            btn.disabled = false;
+        }
+        
+        async function testHealthCheck() {
+            const btn = document.getElementById('healthBtn');
+            const result = document.getElementById('healthResult');
+            
+            btn.textContent = 'Checking...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/test/individual-feature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'health_check', params: {} })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const health = data.result;
+                    const isHealthy = health.status === 'healthy';
+                    result.className = isHealthy ? 'test-result success' : 'test-result error';
+                    result.textContent = `${isHealthy ? '✅' : '❌'} HEALTH CHECK
+Overall Status: ${health.status}
+Timestamp: ${health.timestamp}
+
+Services:
+• Redis: ${health.services?.redis || 'unknown'}
+• PostgreSQL: ${health.services?.postgres || 'unknown'}`;
+                } else {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ HEALTH CHECK FAILED: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ ERROR: ${error.message}`;
+            }
+            
+            btn.textContent = 'Check';
+            btn.disabled = false;
+        }
+        
+        // Utility functions
+        async function testAllFeatures() {
+            if (testRunning) return;
+            testRunning = true;
+            
+            document.querySelector('[onclick="testAllFeatures()"]').textContent = 'Testing...';
+            
+            // Run tests in sequence with delay
+            const tests = [
+                () => testBatchUpdate(),
+                () => new Promise(resolve => setTimeout(resolve, 1000)),
+                () => testCurrentLocation(), 
+                () => new Promise(resolve => setTimeout(resolve, 1000)),
+                () => testLocationHistory(),
+                () => new Promise(resolve => setTimeout(resolve, 1000)),
+                () => testProximitySearch(),
+                () => new Promise(resolve => setTimeout(resolve, 1000)),
+                () => testGeohashing(),
+                () => new Promise(resolve => setTimeout(resolve, 1000)),
+                () => testHealthCheck()
+            ];
+            
+            for (const test of tests) {
+                await test();
+            }
+            
+            document.querySelector('[onclick="testAllFeatures()"]').textContent = '🧪 Test All Features';
+            testRunning = false;
+            
+            // Final stats refresh
+            setTimeout(refreshSystemStats, 2000);
+        }
+        
+        async function runPerformanceTest() {
+            const btn = document.getElementById('perfBtn');
+            const result = document.getElementById('perfResult');
+            
+            btn.textContent = 'Testing...';
+            btn.disabled = true;
+            
+            try {
+                const tests = [];
+                const numTests = 10;
+                
+                // Run multiple location updates
+                for (let i = 0; i < numTests; i++) {
+                    const start = performance.now();
+                    await fetch('/api/test/individual-feature', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: 'batch_update',
+                            params: {
+                                user_id: `perf_test_${i}`,
+                                locations: [{ latitude: 37.7749 + i*0.001, longitude: -122.4194 + i*0.001, accuracy: 5.0 }],
+                                anonymous: false
+                            }
+                        })
+                    });
+                    const end = performance.now();
+                    tests.push(end - start);
+                }
+                
+                const avgTime = tests.reduce((a, b) => a + b, 0) / tests.length;
+                const minTime = Math.min(...tests);
+                const maxTime = Math.max(...tests);
+                
+                result.className = avgTime < 100 ? 'test-result success' : 'test-result error';
+                result.textContent = `📈 PERFORMANCE TEST RESULTS
+Tests Run: ${numTests} batch location updates
+Average Time: ${Math.round(avgTime)}ms
+Min Time: ${Math.round(minTime)}ms  
+Max Time: ${Math.round(maxTime)}ms
+Throughput: ~${Math.round(1000/avgTime)} requests/second
+
+${avgTime < 100 ? '✅ Performance is good!' : '⚠️ Performance may be slow'}`;
+                
+            } catch (error) {
+                result.className = 'test-result error';
+                result.textContent = `❌ PERFORMANCE TEST FAILED: ${error.message}`;
+            }
+            
+            btn.textContent = 'Test';
+            btn.disabled = false;
+            
+            // Refresh stats after performance test
+            setTimeout(refreshSystemStats, 2000);
+        }
+        
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all test data? This would require a backend endpoint to clear Redis data.')) {
+                alert('Clear data functionality would be implemented on the backend.');
+            }
+        }
+        
+        function toggleWebSocket() {
+            const btn = document.getElementById('wsBtn');
+            const result = document.getElementById('wsResult');
+            
+            if (!isWebSocketConnected) {
+                try {
+                    const wsUrl = `ws://${window.location.hostname}:${window.location.port}/ws`;
+                    websocket = new WebSocket(wsUrl);
+                    
+                    websocket.onopen = () => {
+                        isWebSocketConnected = true;
+                        btn.textContent = 'Disconnect';
+                        btn.className = 'btn btn-small btn-danger';
+                        result.className = 'test-result success';
+                        result.textContent = '✅ WebSocket Connected\\nListening for real-time updates...';
+                    };
+                    
+                    websocket.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        const timestamp = new Date().toLocaleTimeString();
+                        
+                        const update = `[${timestamp}] ${data.type}: ${data.user_id}
+Location: ${data.latitude}, ${data.longitude}
+Accuracy: ±${data.accuracy}m
+
+`;
+                        const current = document.getElementById('liveUpdates').textContent;
+                        const lines = (update + current).split('\\n');
+                        document.getElementById('liveUpdates').textContent = lines.slice(0, 20).join('\\n');
+                    };
+                    
+                    websocket.onclose = () => {
+                        isWebSocketConnected = false;
+                        btn.textContent = 'Connect';
+                        btn.className = 'btn btn-small';
+                        result.className = 'test-result error';
+                        result.textContent = '❌ WebSocket Disconnected';
+                    };
+                    
+                    websocket.onerror = (error) => {
+                        result.className = 'test-result error';
+                        result.textContent = `❌ WebSocket Error: ${error}`;
+                    };
+                    
+                } catch (error) {
+                    result.className = 'test-result error';
+                    result.textContent = `❌ Failed to connect: ${error.message}`;
+                }
+            } else {
+                websocket.close();
+            }
+        }
+        
+        function openApiDocs() {
+            window.open('http://localhost:8080/docs', '_blank');
+        }
+        
+        // Auto-refresh connection status
+        setInterval(checkSystemHealth, 10000); // Every 10 seconds
+    </script>
+</body>
+</html>

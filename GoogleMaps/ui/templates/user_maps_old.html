@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗺️ Maps - Your Navigation Companion</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            overflow: hidden;
+            background: #f5f5f5;
+        }
+
+        /* Header */
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4285f4;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-container {
+            flex: 1;
+            max-width: 600px;
+            position: relative;
+        }
+
+        .location-status {
+            position: absolute;
+            right: 60px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #e8f0fe;
+            color: #4285f4;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 50px 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            border-color: #4285f4;
+            box-shadow: 0 2px 10px rgba(66, 133, 244, 0.3);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            background: #3367d6;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-btn {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .header-btn:hover {
+            background: #e8f0fe;
+            border-color: #4285f4;
+            color: #4285f4;
+        }
+
+        /* Map Container */
+        .map-container {
+            position: absolute;
+            top: 70px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Side Panel */
+        .side-panel {
+            position: absolute;
+            top: 70px;
+            left: -400px;
+            width: 400px;
+            height: calc(100vh - 70px);
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: left 0.3s ease;
+            z-index: 999;
+            overflow-y: auto;
+        }
+
+        .side-panel.open {
+            left: 0;
+        }
+
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .close-panel {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .panel-content {
+            padding: 20px;
+        }
+
+        /* Directions Form */
+        .directions-form {
+            display: none;
+        }
+
+        .directions-form.active {
+            display: block;
+        }
+
+        .route-input {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .route-input input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .route-input input:focus {
+            border-color: #4285f4;
+        }
+
+        .route-input .icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+        }
+
+        .route-input input {
+            padding-left: 45px;
+        }
+
+        .get-directions-btn {
+            width: 100%;
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .get-directions-btn:hover {
+            background: #3367d6;
+        }
+
+        /* Places Results */
+        .places-results {
+            display: none;
+        }
+
+        .places-results.active {
+            display: block;
+        }
+
+        .place-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .place-item:hover {
+            background: #f8f9fa;
+        }
+
+        .place-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .place-address {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .place-rating {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #ffa500;
+            font-size: 14px;
+        }
+
+        /* Route Results */
+        .route-results {
+            display: none;
+        }
+
+        .route-results.active {
+            display: block;
+        }
+
+        .route-option {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .route-option:hover {
+            border-color: #4285f4;
+            background: #f8f9fa;
+        }
+
+        .route-option.selected {
+            border-color: #4285f4;
+            background: #e8f0fe;
+        }
+
+        .route-time {
+            font-weight: 600;
+            color: #4285f4;
+            font-size: 18px;
+        }
+
+        .route-distance {
+            color: #666;
+            margin-left: 10px;
+        }
+
+        .route-description {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        /* Controls */
+        .map-controls {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 500;
+        }
+
+        .control-btn {
+            background: white;
+            border: 1px solid #ddd;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: #f8f9fa;
+            transform: scale(1.1);
+        }
+
+        /* Current Location */
+        .current-location {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            z-index: 500;
+        }
+
+        /* Layer Controls */
+        .layer-controls {
+            position: absolute;
+            top: 90px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 10px;
+            z-index: 500;
+        }
+
+        .layer-btn {
+            display: block;
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 10px 15px;
+            text-align: left;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            transition: background 0.3s ease;
+        }
+
+        .layer-btn:hover,
+        .layer-btn.active {
+            background: #e8f0fe;
+            color: #4285f4;
+        }
+
+        /* Traffic Info */
+        .traffic-info {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            z-index: 500;
+            max-width: 250px;
+            display: none;
+        }
+
+        .traffic-info.show {
+            display: block;
+        }
+
+        .traffic-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .traffic-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .traffic-light.green { background: #4caf50; }
+        .traffic-light.yellow { background: #ff9800; }
+        .traffic-light.red { background: #f44336; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px;
+            }
+            
+            .search-container {
+                max-width: none;
+            }
+            
+            .header-actions {
+                gap: 10px;
+            }
+            
+            .header-btn {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            
+            .side-panel {
+                width: 100%;
+                left: -100%;
+            }
+            
+            .layer-controls,
+            .traffic-info {
+                position: relative;
+                margin: 10px;
+                width: auto;
+            }
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4285f4;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <i class="fas fa-map-marked-alt"></i>
+            Maps
+        </div>
+        <div class="search-container">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search for places, addresses, or businesses...">
+            <button class="search-btn" onclick="searchPlaces()">
+                <i class="fas fa-search"></i>
+            </button>
+            <div class="location-status" id="locationStatus" style="display: none;">
+                <i class="fas fa-location-arrow"></i> Using your location
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="header-btn" onclick="openDirections()">
+                <i class="fas fa-directions"></i>
+                Directions
+            </button>
+            <button class="header-btn" onclick="toggleTraffic()">
+                <i class="fas fa-traffic-light"></i>
+                Traffic
+            </button>
+            <button class="header-btn" onclick="toggleSatellite()">
+                <i class="fas fa-satellite"></i>
+                Satellite
+            </button>
+        </div>
+    </div>
+
+    <!-- Map Container -->
+    <div class="map-container">
+        <div id="map"></div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side-panel" id="sidePanel">
+        <div class="panel-header">
+            <div class="panel-title" id="panelTitle">Search Results</div>
+            <button class="close-panel" onclick="closeSidePanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="panel-content" id="panelContent">
+            <!-- Directions Form -->
+            <div class="directions-form" id="directionsForm">
+                <div class="route-input">
+                    <i class="fas fa-circle icon" style="color: #4285f4;"></i>
+                    <input type="text" id="fromInput" placeholder="Choose starting point" />
+                </div>
+                <div class="route-input">
+                    <i class="fas fa-map-marker-alt icon" style="color: #ea4335;"></i>
+                    <input type="text" id="toInput" placeholder="Choose destination" />
+                </div>
+                <button class="get-directions-btn" onclick="getDirections()">
+                    <i class="fas fa-route"></i> Get Directions
+                </button>
+            </div>
+
+            <!-- Places Results -->
+            <div class="places-results" id="placesResults">
+                <!-- Places will be populated here -->
+            </div>
+
+            <!-- Route Results -->
+            <div class="route-results" id="routeResults">
+                <!-- Routes will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Controls -->
+    <div class="map-controls">
+        <button class="control-btn" onclick="zoomIn()" title="Zoom In">
+            <i class="fas fa-plus"></i>
+        </button>
+        <button class="control-btn" onclick="zoomOut()" title="Zoom Out">
+            <i class="fas fa-minus"></i>
+        </button>
+        <button class="control-btn" onclick="toggleFullscreen()" title="Fullscreen">
+            <i class="fas fa-expand"></i>
+        </button>
+    </div>
+
+    <!-- Current Location -->
+    <div class="current-location">
+        <button class="control-btn pulse" onclick="getCurrentLocation()" title="My Location">
+            <i class="fas fa-location-arrow"></i>
+        </button>
+    </div>
+
+    <!-- Layer Controls -->
+    <div class="layer-controls">
+        <button class="layer-btn active" onclick="setMapLayer('standard')">
+            <i class="fas fa-map"></i> Map
+        </button>
+        <button class="layer-btn" onclick="setMapLayer('satellite')">
+            <i class="fas fa-satellite"></i> Satellite
+        </button>
+        <button class="layer-btn" onclick="setMapLayer('terrain')">
+            <i class="fas fa-mountain"></i> Terrain
+        </button>
+    </div>
+
+    <!-- Traffic Info -->
+    <div class="traffic-info" id="trafficInfo">
+        <h4>Traffic Conditions</h4>
+        <div class="traffic-status">
+            <div class="traffic-light green"></div>
+            <span>Light Traffic</span>
+        </div>
+        <div style="font-size: 12px; color: #666; margin-top: 10px;">
+            Last updated: <span id="trafficTime">2 minutes ago</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Global Variables
+        let map;
+        let currentLocation = null;
+        let currentMarkers = [];
+        let currentRoute = null;
+        let trafficLayer = null;
+        let satelliteLayer = null;
+        let locationWatchId = null;
+        let searchAbortController = null;
+
+        // Check if running on HTTPS or localhost
+        function isSecureContext() {
+            return (location.protocol === 'https:' || 
+                    location.hostname === 'localhost' || 
+                    location.hostname === '127.0.0.1' ||
+                    location.hostname.includes('local'));
+        }
+
+        // Initialize Map
+        function initMap() {
+            console.log('Initializing map...');
+            console.log('Secure context (required for location):', isSecureContext());
+            
+            // Check for cached location first
+            const cachedLocation = localStorage.getItem('userLocation');
+            if (cachedLocation) {
+                try {
+                    const parsed = JSON.parse(cachedLocation);
+                    // Check if cached location is not too old (24 hours)
+                    const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+                    if (Date.now() - parsed.timestamp < maxAge) {
+                        currentLocation = [parsed.lat, parsed.lng];
+                        console.log('Using cached location:', currentLocation);
+                    } else {
+                        console.log('Cached location is too old, will request fresh location');
+                        localStorage.removeItem('userLocation');
+                    }
+                } catch (e) {
+                    console.warn('Invalid cached location, will request fresh location');
+                    localStorage.removeItem('userLocation');
+                }
+            }
+            
+            // Set initial view based on cached location or default
+            const initialLat = currentLocation ? currentLocation[0] : 39.8283;
+            const initialLng = currentLocation ? currentLocation[1] : -98.5795;
+            const initialZoom = currentLocation ? 15 : 4;
+            
+            map = L.map('map').setView([initialLat, initialLng], initialZoom);
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Show cached location marker if available and set status
+            if (currentLocation) {
+                showLocationMarker(currentLocation, 'Cached location');
+                showLocationStatus();
+                console.log('Using cached location:', currentLocation);
+            }
+
+            // Try to get fresh location for accuracy, but don't override cached status on error
+            console.log('Initializing map - requesting fresh location...');
+            getCurrentLocation();
+        }
+
+        // Check location permission
+        async function checkLocationPermission() {
+            if (navigator.permissions) {
+                try {
+                    const permission = await navigator.permissions.query({name: 'geolocation'});
+                    console.log('Location permission state:', permission.state);
+                    return permission.state;
+                } catch (error) {
+                    console.log('Permission API not available:', error);
+                    return 'unknown';
+                }
+            }
+            return 'unknown';
+        }
+
+        // Get Current Location
+        async function getCurrentLocation() {
+            console.log('getCurrentLocation called');
+            
+            if (!navigator.geolocation) {
+                console.error('Geolocation is not supported by this browser');
+                showLocationError('Geolocation not supported', 'Please use a browser that supports location services.');
+                return;
+            }
+
+            // Check if running in secure context (required for geolocation in many browsers)
+            if (!isSecureContext()) {
+                console.warn('Geolocation may not work without HTTPS or localhost');
+                showLocationError('Insecure context', 'Location services require HTTPS or localhost. Try accessing via localhost or HTTPS.');
+                return;
+            }
+
+            // Check permission first
+            const permissionState = await checkLocationPermission();
+            console.log('Location permission state:', permissionState);
+            
+            if (permissionState === 'denied') {
+                showLocationError('Location access denied', 'Please enable location access in your browser settings and refresh the page.');
+                return;
+            }
+
+            console.log('Requesting current position...');
+            
+            // Show loading state
+            const locationBtn = document.querySelector('.control-btn[title="My Location"]');
+            if (locationBtn) {
+                locationBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            }
+
+            // Use high accuracy options with longer timeout
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 30000,  // Increased timeout to 30 seconds
+                maximumAge: 300000  // 5 minutes cache
+            };
+
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+                    
+                    console.log(`Location found: ${lat}, ${lng} (±${accuracy}m)`);
+                    
+                    currentLocation = [lat, lng];
+                    
+                    // Cache location for future use
+                    localStorage.setItem('userLocation', JSON.stringify({
+                        lat: lat,
+                        lng: lng,
+                        accuracy: accuracy,
+                        timestamp: Date.now()
+                    }));
+                    
+                    map.setView(currentLocation, 16);
+                    
+                    // Show location marker
+                    showLocationMarker(currentLocation, `Accuracy: ±${Math.round(accuracy)}m`);
+                    showLocationStatus();
+                    
+                    // Update traffic info for current area
+                    updateTrafficInfo();
+                    
+                    // Reset location button
+                    if (locationBtn) {
+                        locationBtn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+                    }
+                    
+                    console.log('Location marker added and map centered');
+                },
+                error => {
+                    console.error('Geolocation error:', error);
+                    
+                    // If we have cached location, don't show error - just log it
+                    if (currentLocation) {
+                        console.log('Fresh location failed, but using cached location:', currentLocation);
+                        // Keep the current positive status showing
+                        return;
+                    }
+                    
+                    let errorMessage = 'Location unavailable';
+                    let detailMessage = '';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'Location access denied';
+                            detailMessage = 'Please enable location access in your browser settings and refresh the page.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'Location unavailable';
+                            detailMessage = 'Your device location cannot be determined. Try moving to a location with better GPS signal.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'Location timeout';
+                            detailMessage = 'Location request timed out. Check your GPS/location settings and try again.';
+                            break;
+                    }
+                    
+                    console.log(`Location error details: ${errorMessage} - ${detailMessage}`);
+                    showLocationError(errorMessage, detailMessage);
+                    
+                    // Reset location button
+                    if (locationBtn) {
+                        locationBtn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+                    }
+                },
+                options
+            );
+        }
+
+        // Show location marker
+        function showLocationMarker(location, popupText) {
+            if (window.currentLocationMarker) {
+                map.removeLayer(window.currentLocationMarker);
+            }
+            
+            window.currentLocationMarker = L.circleMarker(location, {
+                color: '#ffffff',
+                fillColor: '#4285f4',
+                fillOpacity: 1.0,
+                radius: 12,
+                weight: 3
+            }).addTo(map).bindPopup(`<b>📍 You are here</b><br>${popupText}`);
+        }
+
+        // Show location status
+        function showLocationStatus() {
+            const locationStatus = document.getElementById('locationStatus');
+            locationStatus.style.display = 'flex';
+            locationStatus.style.background = '#e8f0fe';
+            locationStatus.style.color = '#4285f4';
+            locationStatus.innerHTML = '<i class="fas fa-location-arrow"></i> Using your location';
+        }
+
+        // Show location error with retry button
+        function showLocationError(message, detailMessage = '') {
+            const locationStatus = document.getElementById('locationStatus');
+            locationStatus.style.display = 'flex';
+            locationStatus.style.background = '#fce8e6';
+            locationStatus.style.color = '#d93025';
+            locationStatus.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i> 
+                ${message}
+                <button onclick="retryLocation()" style="margin-left: 10px; padding: 2px 8px; font-size: 11px; border: 1px solid #d93025; background: white; color: #d93025; border-radius: 12px; cursor: pointer;">
+                    Retry
+                </button>
+            `;
+            
+            // Show detailed error in console for debugging
+            if (detailMessage) {
+                console.log(`Location Error Help: ${detailMessage}`);
+            }
+            
+            // Hide after 10 seconds, but restore positive status if we have cached location
+            setTimeout(() => {
+                if (currentLocation) {
+                    // Restore positive location status
+                    showLocationStatus();
+                } else {
+                    // Hide completely if no location available
+                    locationStatus.style.display = 'none';
+                    locationStatus.style.background = '#e8f0fe';
+                    locationStatus.style.color = '#4285f4';
+                }
+            }, 10000);
+        }
+        
+        // Retry location function
+        function retryLocation() {
+            console.log('Retrying location detection...');
+            getCurrentLocation();
+        }
+
+        // Search Places
+        async function searchPlaces() {
+            const query = document.getElementById('searchBox').value.trim();
+            if (!query) return;
+
+            // Cancel any existing search
+            if (searchAbortController) {
+                searchAbortController.abort();
+            }
+            searchAbortController = new AbortController();
+
+            showLoading('Searching for places near you...', true);
+            openSidePanel('Search Results');
+            
+            // Ensure we have current location
+            if (!currentLocation) {
+                showLoading('Getting your location...');
+                await new Promise(resolve => {
+                    getCurrentLocation();
+                    setTimeout(resolve, 2000); // Wait for location
+                });
+            }
+            
+            try {
+                // Use original query - let location bias handle proximity
+                const enhancedQuery = query;
+                
+                // Use our Places service with current location
+                if (!currentLocation) {
+                    throw new Error('Current location required for search. Please enable location services.');
+                }
+                
+                const searchData = {
+                    query: enhancedQuery,
+                    lat: currentLocation[0],
+                    lng: currentLocation[1],
+                    radius: 5000, // 5km radius
+                    limit: 10
+                };
+                
+                console.log('Searching with location:', searchData);
+                
+                // Create timeout promise
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Search timeout')), 15000); // 15 second timeout
+                });
+                
+                // Create fetch promise with abort signal
+                const fetchPromise = fetch('http://localhost:8083/api/v1/places/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(searchData),
+                    signal: searchAbortController.signal
+                });
+                
+                // Race between fetch and timeout
+                const response = await Promise.race([fetchPromise, timeoutPromise]);
+                
+                if (!response.ok) {
+                    throw new Error(`Search API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Search results:', data);
+                
+                // Handle both direct results and nested results structure
+                const places = data.results || data.places || [data].filter(Boolean);
+                displayPlacesResults(places);
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                
+                if (error.name === 'AbortError') {
+                    console.log('Search was cancelled');
+                    return;
+                }
+                
+                if (error.message === 'Search timeout') {
+                    console.log('Search timed out, showing timeout message');
+                    const resultsContainer = document.getElementById('placesResults');
+                    resultsContainer.innerHTML = `
+                        <div class="loading">
+                            <p>⚠️ Search timed out</p>
+                            <p>Please try again or search for a different location</p>
+                            <button onclick="searchPlaces()" class="header-btn" style="margin-top: 10px;">
+                                🔄 Try Again
+                            </button>
+                        </div>
+                    `;
+                    showPlacesResults();
+                    return;
+                }
+                
+                console.error('Search failed:', error.message);
+                // Show error message instead of mock data
+                const resultsContainer = document.getElementById('placesResults');
+                resultsContainer.innerHTML = `
+                    <div class="loading">
+                        <p>❌ Search failed: ${error.message}</p>
+                        <p>Please check your connection and try again</p>
+                        <button onclick="searchPlaces()" class="header-btn" style="margin-top: 10px;">
+                            🔄 Retry Search
+                        </button>
+                    </div>
+                `;
+                showPlacesResults();
+            }
+        }
+
+        // Display Places Results
+        function displayPlacesResults(places) {
+            const resultsContainer = document.getElementById('placesResults');
+            
+            if (places.length === 0) {
+                resultsContainer.innerHTML = '<div class="loading">No places found. Try a different search term.</div>';
+                showPlacesResults();
+                return;
+            }
+
+            let html = '';
+            places.forEach((place, index) => {
+                const address = place.address || place.location?.address || 'Address not available';
+                const rating = place.rating || '4.0';
+                const reviews = place.reviews || place.review_count || '100';
+                const placeName = place.name || place.place_name || 'Unknown Place';
+                
+                html += `
+                    <div class="place-item" onclick="selectPlace(${index}, ${JSON.stringify(place).replace(/"/g, '&quot;')})">
+                        <div class="place-name">${placeName}</div>
+                        <div class="place-address">${address}</div>
+                        <div class="place-rating">
+                            <i class="fas fa-star"></i>
+                            <span>${rating} (${reviews} reviews)</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsContainer.innerHTML = html;
+            showPlacesResults();
+            
+            // Add markers to map
+            clearMarkers();
+            places.forEach((place, index) => {
+                if (place.location) {
+                    const marker = L.marker([place.location.lat, place.location.lng])
+                        .addTo(map)
+                        .bindPopup(`<b>${place.name}</b><br>${place.address}`);
+                    currentMarkers.push(marker);
+                }
+            });
+        }
+
+
+        // Select Place
+        function selectPlace(index, place) {
+            if (place.location) {
+                map.setView([place.location.lat, place.location.lng], 16);
+                
+                // Highlight selected marker
+                if (currentMarkers[index]) {
+                    currentMarkers[index].openPopup();
+                }
+            }
+        }
+
+        // Open Directions
+        function openDirections() {
+            openSidePanel('Get Directions');
+            showDirectionsForm();
+            
+            // Pre-fill current location
+            if (currentLocation) {
+                document.getElementById('fromInput').value = 'Current Location';
+            }
+        }
+
+        // Get Directions
+        async function getDirections() {
+            const from = document.getElementById('fromInput').value.trim();
+            const to = document.getElementById('toInput').value.trim();
+            
+            if (!from || !to) {
+                alert('Please enter both starting point and destination');
+                return;
+            }
+
+            showLoading('Calculating routes...');
+            
+            try {
+                // Convert addresses to coordinates if needed
+                console.log('🔍 Geocoding addresses for directions...');
+                
+                let originCoords;
+                if (from === 'Current Location' && currentLocation) {
+                    originCoords = { latitude: currentLocation[0], longitude: currentLocation[1] };
+                    console.log('✅ Using current location as origin:', originCoords);
+                } else {
+                    console.log('🔍 Geocoding origin address:', from);
+                    originCoords = await geocodeAddress(from);
+                    if (!originCoords) {
+                        throw new Error(`Could not find location: "${from}". Try being more specific or use a full address.`);
+                    }
+                    console.log('✅ Origin geocoded to:', originCoords);
+                }
+                
+                console.log('🔍 Geocoding destination address:', to);
+                const destCoords = await geocodeAddress(to);
+                if (!destCoords) {
+                    throw new Error(`Could not find location: "${to}". Try being more specific or use a full address.`);
+                }
+                console.log('✅ Destination geocoded to:', destCoords);
+                
+                // Check if destination seems unusually far from current location
+                if (currentLocation && destCoords.display_name) {
+                    const [userLat, userLng] = currentLocation;
+                    const destDistance = Math.sqrt(
+                        Math.pow(destCoords.latitude - userLat, 2) + 
+                        Math.pow(destCoords.longitude - userLng, 2)
+                    );
+                    
+                    // Warn if destination is very far (more than ~100km)
+                    if (destDistance > 1.0) {
+                        console.warn('⚠️ Destination seems far from your current location. Is this correct?');
+                        console.warn('Distance: ~', Math.round(destDistance * 111), 'km');
+                        console.warn('Destination:', destCoords.display_name);
+                    }
+                }
+                
+                // Prepare route request data
+                const routeData = {
+                    origin: originCoords,
+                    destination: destCoords,
+                    travel_mode: 'driving'
+                };
+                
+                console.log('Requesting directions:', routeData);
+                
+                // Use our Navigation service with timeout
+                const navigationTimeout = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Navigation timeout')), 20000); // 20 second timeout
+                });
+                
+                const navigationFetch = fetch('http://localhost:8081/api/v1/navigation/route', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(routeData)
+                });
+                
+                const response = await Promise.race([navigationFetch, navigationTimeout]);
+                
+                if (!response.ok) {
+                    throw new Error(`Navigation API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Navigation results:', data);
+                
+                // Convert single route response to routes array
+                const routes = data.route_id ? [data] : data.routes || [];
+                displayRouteResults(routes);
+                
+            } catch (error) {
+                console.error('Directions error:', error);
+                
+                if (error.message === 'Navigation timeout') {
+                    console.log('Navigation timed out, showing timeout message');
+                    const resultsContainer = document.getElementById('routeResults');
+                    resultsContainer.innerHTML = `
+                        <div class="loading">
+                            <p>⚠️ Navigation request timed out</p>
+                            <p>Please try again or check if the locations are valid</p>
+                            <button onclick="getDirections()" class="header-btn" style="margin-top: 10px;">
+                                🔄 Try Again
+                            </button>
+                        </div>
+                    `;
+                    showRouteResults();
+                    return;
+                }
+                
+                console.error('Navigation failed:', error.message);
+                // Show error instead of mock routes
+                const resultsContainer = document.getElementById('routeResults');
+                resultsContainer.innerHTML = `
+                    <div class="loading">
+                        <p>❌ Navigation failed: ${error.message}</p>
+                        <p>Could not find route between the locations</p>
+                        <p>Geocoded locations:</p>
+                        <p>From: ${from} → Searching with real geocoding...</p>
+                        <p>To: ${to} → Searching with real geocoding...</p>
+                        <button onclick="getDirections()" class="header-btn" style="margin-top: 10px;">
+                            🔄 Try Again
+                        </button>
+                    </div>
+                `;
+                showRouteResults();
+            }
+        }
+
+        // Display Route Results
+        function displayRouteResults(routes) {
+            const resultsContainer = document.getElementById('routeResults');
+            
+            if (routes.length === 0) {
+                resultsContainer.innerHTML = '<div class="loading">No routes found. Please try different locations.</div>';
+                showRouteResults();
+                return;
+            }
+
+            let html = '';
+            routes.forEach((route, index) => {
+                // Handle different response formats
+                const duration = route.total_duration || route.duration || '25 min';
+                const distance = route.total_distance || route.distance || '12.5 km';
+                const description = route.summary || route.description || 'Fastest route via main roads';
+                
+                // Convert seconds to minutes if needed
+                const durationText = typeof duration === 'number' ? 
+                    Math.round(duration / 60) + ' min' : duration;
+                
+                // Format distance if it's in meters
+                const distanceText = typeof distance === 'number' ? 
+                    (distance > 1000 ? (distance / 1000).toFixed(1) + ' km' : distance + ' m') : distance;
+                
+                html += `
+                    <div class="route-option ${index === 0 ? 'selected' : ''}" onclick="selectRoute(${index}, ${JSON.stringify(route).replace(/"/g, '&quot;')})">
+                        <div>
+                            <span class="route-time">${durationText}</span>
+                            <span class="route-distance">${distanceText}</span>
+                        </div>
+                        <div class="route-description">${description}</div>
+                    </div>
+                `;
+            });
+            
+            resultsContainer.innerHTML = html;
+            showRouteResults();
+            
+            // Show first route on map
+            if (routes.length > 0) {
+                selectRoute(0, routes[0]);
+            }
+        }
+
+
+        // Select Route
+        function selectRoute(index, route) {
+            // Update selected route in UI
+            document.querySelectorAll('.route-option').forEach((el, i) => {
+                el.classList.toggle('selected', i === index);
+            });
+            
+            // Draw route on map
+            if (currentRoute) {
+                map.removeLayer(currentRoute);
+            }
+            
+            if (route) {
+                // Handle different polyline formats
+                let routePath = route.path || route.polyline || route.steps;
+                
+                if (typeof routePath === 'string') {
+                    // Parse string polyline like "lat1,lng1;lat2,lng2"
+                    routePath = routePath.split(';').map(coord => {
+                        const [lat, lng] = coord.split(',');
+                        return [parseFloat(lat), parseFloat(lng)];
+                    });
+                } else if (route.steps && Array.isArray(route.steps)) {
+                    // Extract coordinates from steps
+                    routePath = route.steps.map(step => [
+                        step.start_location?.latitude || step.start_location?.lat,
+                        step.start_location?.longitude || step.start_location?.lng
+                    ]).filter(coord => coord[0] && coord[1]);
+                    
+                    // Add end location
+                    const lastStep = route.steps[route.steps.length - 1];
+                    if (lastStep?.end_location) {
+                        routePath.push([
+                            lastStep.end_location.latitude || lastStep.end_location.lat,
+                            lastStep.end_location.longitude || lastStep.end_location.lng
+                        ]);
+                    }
+                }
+                
+                if (routePath && Array.isArray(routePath) && routePath.length > 0) {
+                    currentRoute = L.polyline(routePath, {
+                        color: '#4285f4',
+                        weight: 5,
+                        opacity: 0.8
+                    }).addTo(map);
+                    
+                    map.fitBounds(currentRoute.getBounds());
+                } else {
+                    console.warn('No valid route path found in route data');
+                    console.warn('Route data:', route);
+                }
+            }
+        }
+
+        // Toggle Traffic
+        function toggleTraffic() {
+            const trafficInfo = document.getElementById('trafficInfo');
+            trafficInfo.classList.toggle('show');
+            
+            if (trafficInfo.classList.contains('show')) {
+                updateTrafficInfo();
+            }
+        }
+
+        // Update Traffic Info
+        async function updateTrafficInfo() {
+            try {
+                const bounds = map.getBounds();
+                const response = await fetch('http://localhost:8084/api/v1/traffic/live-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bounds: {
+                            north: bounds.getNorth(),
+                            south: bounds.getSouth(),
+                            east: bounds.getEast(),
+                            west: bounds.getWest()
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                updateTrafficDisplay(data);
+            } catch (error) {
+                console.error('Traffic update error:', error);
+                // Show mock traffic data
+                updateTrafficDisplay({
+                    overall_traffic_condition: 'Light Traffic',
+                    severe_incidents_count: 1
+                });
+            }
+        }
+
+        // Update Traffic Display
+        function updateTrafficDisplay(data) {
+            const trafficInfo = document.getElementById('trafficInfo');
+            const condition = data.overall_traffic_condition || 'Light Traffic';
+            const incidents = data.severe_incidents_count || 0;
+            
+            let lightClass = 'green';
+            if (condition.includes('Moderate')) lightClass = 'yellow';
+            if (condition.includes('Heavy') || condition.includes('Severe')) lightClass = 'red';
+            
+            trafficInfo.innerHTML = `
+                <h4>Traffic Conditions</h4>
+                <div class="traffic-status">
+                    <div class="traffic-light ${lightClass}"></div>
+                    <span>${condition}</span>
+                </div>
+                ${incidents > 0 ? `<div style="color: #f44336; font-size: 12px; margin-top: 5px;">${incidents} incident(s) reported</div>` : ''}
+                <div style="font-size: 12px; color: #666; margin-top: 10px;">
+                    Last updated: <span id="trafficTime">Just now</span>
+                </div>
+            `;
+        }
+
+        // Toggle Satellite
+        function toggleSatellite() {
+            setMapLayer('satellite');
+        }
+
+        // Set Map Layer
+        function setMapLayer(layerType) {
+            // Update layer buttons
+            document.querySelectorAll('.layer-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.querySelector(`[onclick="setMapLayer('${layerType}')"]`).classList.add('active');
+            
+            // Switch map tiles
+            map.eachLayer(layer => {
+                if (layer instanceof L.TileLayer) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            let tileUrl, attribution;
+            
+            switch (layerType) {
+                case 'satellite':
+                    tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+                    attribution = '© Esri';
+                    break;
+                case 'terrain':
+                    tileUrl = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+                    attribution = '© OpenTopoMap';
+                    break;
+                default:
+                    tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+                    attribution = '© OpenStreetMap contributors';
+            }
+            
+            L.tileLayer(tileUrl, {
+                maxZoom: 19,
+                attribution: attribution
+            }).addTo(map);
+        }
+
+        // Map Controls
+        function zoomIn() {
+            map.zoomIn();
+        }
+
+        function zoomOut() {
+            map.zoomOut();
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Panel Management
+        function openSidePanel(title) {
+            document.getElementById('panelTitle').textContent = title;
+            document.getElementById('sidePanel').classList.add('open');
+        }
+
+        function closeSidePanel() {
+            document.getElementById('sidePanel').classList.remove('open');
+        }
+
+        function showDirectionsForm() {
+            hideAllPanelContent();
+            document.getElementById('directionsForm').classList.add('active');
+        }
+
+        function showPlacesResults() {
+            hideAllPanelContent();
+            document.getElementById('placesResults').classList.add('active');
+        }
+
+        function showRouteResults() {
+            hideAllPanelContent();
+            document.getElementById('routeResults').classList.add('active');
+        }
+
+        function hideAllPanelContent() {
+            document.querySelectorAll('.directions-form, .places-results, .route-results').forEach(el => {
+                el.classList.remove('active');
+            });
+        }
+
+        function showLoading(message, showCancelButton = false) {
+            const content = document.getElementById('panelContent');
+            const activePanel = content.querySelector('.active') || content;
+            
+            const cancelButtonHtml = showCancelButton ? `
+                <button onclick="cancelSearch()" class="header-btn" style="margin-top: 15px; background-color: #f44336; border-color: #f44336;">
+                    ❌ Cancel Search
+                </button>
+            ` : '';
+            
+            activePanel.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    ${message}
+                    ${cancelButtonHtml}
+                </div>
+            `;
+        }
+
+        // Cancel active search
+        function cancelSearch() {
+            if (searchAbortController) {
+                searchAbortController.abort();
+                searchAbortController = null;
+                console.log('Search cancelled by user');
+                
+                const resultsContainer = document.getElementById('placesResults');
+                resultsContainer.innerHTML = `
+                    <div class="loading">
+                        <p>🚫 Search cancelled</p>
+                        <button onclick="searchPlaces()" class="header-btn" style="margin-top: 10px;">
+                            🔍 Start New Search
+                        </button>
+                    </div>
+                `;
+                showPlacesResults();
+            }
+        }
+
+        // Clear Markers
+        function clearMarkers() {
+            currentMarkers.forEach(marker => {
+                map.removeLayer(marker);
+            });
+            currentMarkers = [];
+        }
+
+        // Geocode Address to Real Coordinates with multiple strategies
+        async function geocodeAddress(address) {
+            try {
+                console.log('Geocoding address:', address);
+                
+                // Use current location coordinates for better geocoding context
+                let enhancedAddress = address;
+                
+                // Try multiple geocoding strategies
+                const strategies = [
+                    // Strategy 1: Location-biased search (smaller radius)
+                    async () => {
+                        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=10&addressdetails=1`;
+                        if (currentLocation) {
+                            const [lat, lng] = currentLocation;
+                            url += `&viewbox=${lng-0.1},${lat+0.1},${lng+0.1},${lat-0.1}&bounded=1`;
+                        }
+                        console.log('Strategy 1: Location-biased search (small radius)');
+                        return await fetch(url);
+                    },
+                    
+                    // Strategy 2: Location-biased search (larger radius)
+                    async () => {
+                        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=10&addressdetails=1`;
+                        if (currentLocation) {
+                            const [lat, lng] = currentLocation;
+                            url += `&viewbox=${lng-0.3},${lat+0.3},${lng+0.3},${lat-0.3}&bounded=1`;
+                        }
+                        console.log('Strategy 2: Location-biased search (large radius)');
+                        return await fetch(url);
+                    },
+                    
+                    // Strategy 3: Global search without bias
+                    async () => {
+                        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=10&addressdetails=1`;
+                        console.log('Strategy 3: Global search without location bias');
+                        return await fetch(url);
+                    }
+                ];
+                
+                // Try each strategy until we get results
+                for (const [index, strategy] of strategies.entries()) {
+                    try {
+                        const response = await strategy();
+                        const data = await response.json();
+                        
+                        if (data && data.length > 0) {
+                            console.log(`Strategy ${index + 1} found ${data.length} results`);
+                            
+                            // Filter and rank results
+                            let bestResult = data[0];
+                            
+                            if (currentLocation && data.length > 1) {
+                                // Calculate distance and relevance for each result
+                                const [userLat, userLng] = currentLocation;
+                                let bestScore = -Infinity;
+                                
+                                for (const result of data) {
+                                    const resultLat = parseFloat(result.lat);
+                                    const resultLng = parseFloat(result.lon);
+                                    
+                                    // Calculate distance (lower is better)
+                                    const distance = Math.sqrt(
+                                        Math.pow(resultLat - userLat, 2) + 
+                                        Math.pow(resultLng - userLng, 2)
+                                    );
+                                    
+                                    // Calculate relevance score
+                                    let relevanceScore = 0;
+                                    
+                                    // Prefer exact name matches
+                                    if (result.display_name.toLowerCase().includes(address.toLowerCase())) {
+                                        relevanceScore += 10;
+                                    }
+                                    
+                                    // Prefer higher importance/rank
+                                    if (result.importance) {
+                                        relevanceScore += result.importance * 5;
+                                    }
+                                    
+                                    // Prefer closer results (distance penalty)
+                                    relevanceScore -= distance * 10;
+                                    
+                                    // Prefer results with good address details
+                                    if (result.address) {
+                                        relevanceScore += Object.keys(result.address).length * 0.5;
+                                    }
+                                    
+                                    if (relevanceScore > bestScore) {
+                                        bestScore = relevanceScore;
+                                        bestResult = result;
+                                    }
+                                }
+                                
+                                console.log(`Selected best result with score ${bestScore.toFixed(2)}`);
+                            }
+                            
+                            const result = {
+                                latitude: parseFloat(bestResult.lat),
+                                longitude: parseFloat(bestResult.lon),
+                                display_name: bestResult.display_name,
+                                address: bestResult.address,
+                                importance: bestResult.importance
+                            };
+                            
+                            console.log('✅ Real geocoding result:', result);
+                            return result;
+                        }
+                        
+                    } catch (strategyError) {
+                        console.warn(`Strategy ${index + 1} failed:`, strategyError);
+                        continue;
+                    }
+                }
+                
+                console.log('❌ All geocoding strategies failed');
+                return null;
+                
+            } catch (error) {
+                console.error('❌ Geocoding error:', error);
+                console.error('Network or API issue - could not geocode address:', address);
+                return null;
+            }
+        }
+
+
+        // Search on Enter key
+        document.getElementById('searchBox').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchPlaces();
+            }
+        });
+
+        // Initialize map when page loads
+        window.addEventListener('load', initMap);
+
+        // Also try location detection when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM ready - attempting location detection');
+            setTimeout(() => {
+                if (!currentLocation) {
+                    console.log('No location found yet, retrying...');
+                    getCurrentLocation();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

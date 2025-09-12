@@ -1,0 +1,15 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install flask requests
+
+# Copy UI files
+COPY ui/ ./ui/
+
+# Expose port
+EXPOSE 3002
+
+# Run UI service
+CMD ["python", "ui/maps_ui.py"]
