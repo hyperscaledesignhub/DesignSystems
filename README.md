@@ -1,172 +1,216 @@
-# Hyperscale Design Systems
+# Distributed Systems Design Portfolio
 
-**Real-world system design implementations with practical deployment patterns**
+A comprehensive collection of distributed system designs and implementations showcasing various architectural patterns, scalability solutions, and modern infrastructure technologies.
 
-This repository contains complete implementations of distributed systems commonly discussed in system design interviews and used at scale in production. Each system is built with realistic requirements, deployed through multiple environments, and documented with architectural decisions.
+## 📚 Project Overview
 
-## 🏗️ Systems Implemented
+This repository contains multiple distributed system implementations demonstrating real-world architecture patterns used by major tech companies. Each system is designed with scalability, reliability, and performance in mind.
 
-### Core Systems (Initial Focus)
-| System | Description | Status |
-|--------|-------------|---------|
-| **Rate Limiter** | Distributed rate limiting with multiple algorithms | 🚧 In Development |
-| **Key-Value Database** | Distributed KV store with replication and sharding | 🚧 In Development |
-| **YouTube-like Video Platform** | Video upload, processing, and streaming service | 🚧 In Development |
-| **Google Maps Clone** | Geospatial data service with routing capabilities | 🚧 In Development |
-| **Web Crawler** | Distributed web crawling and indexing system | 🚧 In Development |
-| **Chat Application** | Real-time messaging with presence and notifications | 🚧 In Development |
-| **Ad Serving System** | Real-time bidding and ad serving platform | 🚧 In Development |
+## 🏗️ Systems Included
 
-### Planned Extensions
-- **Search Engine** - Full-text search with ranking algorithms
-- **Payment System** - Transaction processing with fraud detection  
-- **CDN** - Content delivery network with edge caching
-- **Load Balancer** - Layer 4/7 load balancing with health checks
-- **Message Queue** - High-throughput message broker
-- **API Gateway** - Request routing, authentication, and rate limiting
-- **Notification System** - Multi-channel push notifications
-- **Time Series Database** - Metrics storage and analytics
-- **URL Shortener** - Link shortening with analytics
-- **Social Network** - Activity feeds and graph-based recommendations
-- *...and many more classic distributed systems*
+### Core Distributed Systems
 
-This collection grows based on community interest and educational value. Each system represents real-world architectural challenges found in production environments.
+1. **IntelliKV-DB**: A distributed key-value database with consistent hashing, replication, and fault tolerance
+2. **DistributedMessageQueue**: Message queue system with pub/sub patterns and guaranteed delivery
+3. **GoogleMaps**: Location-based services with geospatial indexing and routing algorithms
+4. **GoogleDriveSystem**: Distributed file storage with chunking, deduplication, and sync capabilities
+5. **S3-LikeObjectStorage**: Object storage service with multi-part uploads and versioning
+6. **MetricsMonitoringAndCollection**: Time-series metrics collection and aggregation system
+7. **Notification**: Real-time notification delivery system with multiple channels
 
-## 📚 Learning Levels
+### Application Systems
 
-Each system is implemented across three progressive levels:
-
-### Level 0: Local Development
-- **Focus**: Core algorithms and data structures
-- **Environment**: Local development with Docker Compose
-- **Includes**: Architecture diagrams, API design, basic implementation
-- **Skills**: System design fundamentals, API design, local testing
-
-### Level 1: Kubernetes Deployment
-- **Focus**: Container orchestration and service mesh
-- **Environment**: Kubernetes (local) → EKS (cloud)
-- **Includes**: K8s manifests, service discovery, load balancing
-- **Skills**: Container orchestration, microservices, cloud deployment
-
-### Level 2: Production-Grade
-- **Focus**: Observability, scaling, and operational concerns
-- **Environment**: Full cloud-native with monitoring stack
-- **Includes**: Metrics, logging, tracing, auto-scaling, disaster recovery
-- **Skills**: Site reliability, monitoring, performance optimization
+1. **HotelBooking**: Microservices-based booking system with inventory management
+2. **PaymentSystem**: Secure payment processing with fraud detection
+3. **StockExchange**: High-frequency trading system with order matching engine
+4. **DistributedEmailService**: Email delivery service with queue management
+5. **AdClickEvents**: Click stream processing and analytics
+6. **Digital-Wallet**: Digital wallet with transaction management
+7. **NearByFriends**: Location-based social features
+8. **NewsFeedService**: Personalized news feed generation
+9. **ProximityService**: Geospatial proximity search service
+10. **RateLimiter**: Distributed rate limiting service
+11. **RealTimeGamingBoard**: Real-time leaderboard system
+12. **SearchAutoComplete**: Search suggestion service with trie data structures
+13. **WebCrawler**: Distributed web crawling system
 
 ## 🚀 Quick Start
 
+### Prerequisites
+- Docker and Docker Compose
+- Node.js and npm (v14+)
+- Python 3.8+
+- PostgreSQL client (optional)
+- Redis (for caching layers)
+- Kubernetes (for k8s deployments)
+
+### Running Systems
+
+#### Start All Services
 ```bash
-# Clone the repository
-git clone https://github.com/hyperscaledesignhub/DesignSystems.git
-cd DesignSystems
-
-# Each system has its own directory
-ls -la
-# rate-limiter/
-# kvdb/
-# video-platform/
-# maps-service/
-# web-crawler/
-# chat-app/
-# ad-system/
+./start-services.sh
 ```
 
-## 📁 Repository Structure
+#### Start Individual Systems
+Each system can be run independently. Navigate to the specific directory and follow the README instructions.
 
-```
-DesignSystems/
-├── rate-limiter/           # Distributed rate limiting
-├── kvdb/                   # Key-value database
-├── video-platform/         # Video streaming service
-├── maps-service/           # Geospatial routing service
-├── web-crawler/            # Distributed web crawler
-├── chat-app/              # Real-time messaging
-├── ad-system/             # Ad serving platform
-├── shared/                # Common utilities and libraries
-└── docs/                  # Cross-system documentation
+#### Using Docker Compose
+Most systems include docker-compose configurations:
+```bash
+cd [system-directory]
+docker-compose up -d
 ```
 
-Each system directory contains:
-```
-system-name/
-├── README.md              # System-specific documentation
-├── docs/                  # Architecture and design docs
-├── level-0/              # Local development
-├── level-1/              # Kubernetes deployment
-├── level-2/              # Production-grade setup
-└── tests/                # Integration and load tests
+#### Kubernetes Deployments
+For systems with k8s support:
+```bash
+cd IntelliKV-DB/local-k8s
+./build-and-deploy.sh
 ```
 
-## 🎯 Learning Objectives
+## 🎯 Key Features
 
-By working through these implementations, you'll gain hands-on experience with:
+### Distributed System Patterns
+- **Consistent Hashing**: Used in IntelliKV-DB for data distribution
+- **Replication & Fault Tolerance**: Multi-node replication with automatic failover
+- **Load Balancing**: Multiple load balancing algorithms implemented
+- **Service Discovery**: Dynamic service registration and discovery
+- **Circuit Breakers**: Failure handling and graceful degradation
+- **Rate Limiting**: Token bucket and sliding window implementations
+- **Caching Strategies**: Multi-level caching with Redis and in-memory stores
 
-**System Design Concepts**
-- Scalability patterns and trade-offs
-- Data consistency and distributed consensus
-- Caching strategies and cache invalidation
-- Load balancing and service discovery
+### Data Management
+- **Sharding**: Horizontal partitioning for scalability
+- **Event Sourcing**: Event-driven architectures in multiple systems
+- **CQRS**: Command Query Responsibility Segregation patterns
+- **Distributed Transactions**: 2PC and Saga patterns
+- **Data Consistency**: Eventual and strong consistency models
 
-**Technical Implementation**
-- Microservices architecture
-- Event-driven design and message queues
-- Database sharding and replication
-- API design and rate limiting
+### Infrastructure & DevOps
+- **Containerization**: Docker containers for all services
+- **Orchestration**: Kubernetes deployments with StatefulSets
+- **Service Mesh**: Inter-service communication patterns
+- **Monitoring**: Metrics collection and observability
+- **CI/CD**: Automated testing and deployment scripts
+- **Infrastructure as Code**: Declarative infrastructure definitions
 
-**Operational Excellence**
-- Container orchestration with Kubernetes
-- Monitoring, logging, and observability
-- Auto-scaling and capacity planning
-- Disaster recovery and fault tolerance
+## 🌐 Technologies Used
 
-## 🛠️ Technology Stack
+### Languages
+- **Python**: Primary language for distributed systems (IntelliKV-DB, ML services)
+- **Go**: High-performance services (GoogleMaps, ProximityService)
+- **Java**: Enterprise systems (StockExchange, PaymentSystem)
+- **Node.js/TypeScript**: Microservices and real-time systems
+- **React**: Frontend applications
 
-**Core Technologies**
-- **Languages**: Go, Python, JavaScript/TypeScript
-- **Databases**: PostgreSQL, Redis, MongoDB, Cassandra
-- **Message Queues**: Apache Kafka, RabbitMQ, Amazon SQS
-- **Caching**: Redis, Memcached
+### Databases
+- **PostgreSQL**: Relational data storage
+- **Redis**: Caching and session management
+- **MongoDB**: Document storage for flexible schemas
+- **Cassandra**: Wide-column store for time-series data
+- **ElasticSearch**: Full-text search capabilities
 
-**Infrastructure & Deployment**
-- **Containers**: Docker, Docker Compose
-- **Orchestration**: Kubernetes, Amazon EKS
-- **Cloud**: AWS (primary), with multi-cloud examples
-- **Service Mesh**: Istio (Level 2)
+### Infrastructure
+- **Docker**: Containerization of all services
+- **Kubernetes**: Container orchestration
+- **Apache Kafka**: Event streaming platform
+- **RabbitMQ**: Message queuing
+- **Nginx**: Load balancing and reverse proxy
+- **Prometheus**: Metrics collection
+- **Grafana**: Metrics visualization
 
-**Observability**
-- **Metrics**: Prometheus, Grafana
-- **Logging**: ELK Stack (Elasticsearch, Logstash, Kibana)
-- **Tracing**: Jaeger, OpenTelemetry
-- **APM**: DataDog (Level 2 examples)
+## 📖 System Highlights
 
-## 📖 Documentation
+### IntelliKV-DB
+- Distributed key-value store with consistent hashing
+- Multi-node replication with configurable replication factor
+- Automatic failover and recovery
+- Support for offline nodes and dynamic node addition
+- Kubernetes StatefulSet deployment
 
-- **Architecture Decisions**: Each system includes ADRs (Architecture Decision Records)
-- **API Documentation**: OpenAPI/Swagger specifications
-- **Deployment Guides**: Step-by-step deployment instructions
-- **Troubleshooting**: Common issues and solutions
+### GoogleMaps
+- Geospatial indexing using QuadTree/R-Tree
+- Route calculation with Dijkstra/A* algorithms
+- Real-time traffic updates
+- POI search and recommendations
+- Map tile serving and caching
+
+### S3-Like Object Storage
+- Multi-part upload support
+- Object versioning and lifecycle management
+- Erasure coding for data durability
+- CDN integration for content delivery
+- S3-compatible API
+
+### DistributedMessageQueue
+- Pub/Sub and Point-to-Point messaging
+- Message persistence and replay
+- Dead letter queues
+- Exactly-once delivery semantics
+- Horizontal scaling with partitioning
+
+### StockExchange
+- Order matching engine with sub-millisecond latency
+- Support for multiple order types (Market, Limit, Stop)
+- Real-time price feeds
+- Risk management and circuit breakers
+- Historical data storage and replay
+
+## 📊 Documentation
+
+### System Design Documents
+- `DATA_FLOW_DIAGRAMS.md`: Data flow architecture diagrams
+- `DEMO_FLOW_DIAGRAMS.md`: Demo workflow visualizations
+- `DEMO_GUIDE.md`: Step-by-step demo instructions
+
+### Individual System READMEs
+Each system directory contains its own README with:
+- Architecture overview
+- Setup instructions
+- API documentation
+- Testing procedures
+- Performance benchmarks
+
+## 🔧 Development
+
+### Running Tests
+```bash
+# Unit tests
+cd [system-directory]
+npm test  # or pytest, go test, mvn test
+
+# Integration tests
+docker-compose -f docker-compose.test.yml up
+```
+
+### Building from Source
+```bash
+# Python projects
+pip install -r requirements.txt
+
+# Node.js projects
+npm install
+
+# Go projects
+go mod download
+
+# Java projects
+mvn clean install
+```
 
 ## 🤝 Contributing
 
-This project is actively being developed. While we're not accepting external contributions during the initial build phase, we welcome:
+1. Fork the repository
+2. Create a feature branch
+3. Implement your changes with tests
+4. Submit a pull request
 
-- **Issues**: Bug reports and feature suggestions
-- **Discussions**: Architecture feedback and improvement ideas
-- **Questions**: Ask about implementation details or deployment
+## 📝 License
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Related Resources
-
-- **System Design Interviews**: How these implementations relate to common interview questions
-- **Production Examples**: References to how these patterns are used at major tech companies
-- **Further Reading**: Recommended papers, blogs, and books for each system
+This project is for educational and demonstration purposes.
 
 ---
 
-**⚠️ Current Status**: This repository is under active development. Systems are being built incrementally with a focus on quality over speed. Star the repo to stay updated on progress.
-
-**🎓 Educational Use**: These implementations are designed for learning. While production-ready in architecture, always perform your own security and performance validation before production use.
+**Status**: ✅ Active Development
+**Last Updated**: September 2025  
+**Version**: 2.0.0
