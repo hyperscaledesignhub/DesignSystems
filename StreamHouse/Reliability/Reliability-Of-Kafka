@@ -1,0 +1,12 @@
+How Kafka Forms the cluster? 
+Kafka forms cluster in the following way
+1.Every broker knows whom to connect with, they hold zookeeper string
+2.Every broker after connecting to zookeeper there is an ephemeral node /broker/id/ getting created
+3.If broker lost connection this id will be deleted by zookeeper
+4. Very first broker connected creates /controller/ node. Which is the leader
+5. Leader is responsible for: 1. Assigning leader to partitions in the cluster 2. Replication assignment, like which parition has to be replicated into which node. 3. 
+6. In case leader dies /controller node is deleted
+7. Again all nodes compete each other and leader gets selected
+8. New leader is going to reassigns the ownership of the partitions and decides where replicas live
+How Kafka provides data consistency?
+How Kafka consumers receive data in the correct order?
