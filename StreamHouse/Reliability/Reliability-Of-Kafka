@@ -4,9 +4,13 @@ Kafka forms cluster in the following way
 2.Every broker after connecting to zookeeper there is an ephemeral node /broker/id/ getting created
 3.If broker lost connection this id will be deleted by zookeeper
 4. Very first broker connected creates /controller/ node. Which is the leader
-5. Leader is responsible for: 1. Assigning leader to partitions in the cluster 2. Replication assignment, like which parition has to be replicated into which node. 3. 
+5. Leader is responsible for: 1. Assigning each broker, which partitions they should lead 2. Which partitions each broker has to replicate
 6. In case leader dies /controller node is deleted
 7. Again all nodes compete each other and leader gets selected
-8. New leader is going to reassigns the ownership of the partitions and decides where replicas live
+8. At this point its not necessary to do partition reassignment and replication happen again. As long as min-sync-replicas=1, cluster can operate with 1 broker in case of failures of broker
+9. Only when new broker added then partition reassignment happen
+and there by huge data movement happen across the brokers
+
 How Kafka provides data consistency?
+
 How Kafka consumers receive data in the correct order?
