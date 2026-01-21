@@ -13,4 +13,5 @@ and there by huge data movement happen across the brokers
 
 How Kafka provides data consistency?
 
+
 How Kafka consumers receive data in the correct order?

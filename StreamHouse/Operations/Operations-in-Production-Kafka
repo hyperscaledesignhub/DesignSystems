@@ -34,7 +34,20 @@
    1. If there is sufficient time we can reduce retention time in disk
    2. We can also increase the cloud volume space
    3. We can reassign the partitions such that current brokers high volume partitions can be handled by other brokers which have more space
-     
+4. Consumer Rebalance storm:
+Why this happens? Because one of the consumer in the group is not responsive for longer duration. Operations can be performed to detect and rectify it in the following way
+    1. This is caused by small <session time out> value of each consumer
+        a. We can increase this value so that leader broker waits for more time before concluding consumer is timing out
+    2. This is caused by <poll interval>  duration of the consumer.
+        a. During every poll consumer fetches some records and process. This is a signal to broker that consumer is progressing. Consumer does polling with the frequency given by <poll interval>. Sometimes consumer may be stuck reading more records and it mayn't issue.This is the signal
+        to broker that consumer is not active. Hence broker issues rebalancing of consumer, we can increase this value. Or sometimes network issues might cause this problem
+    3. Old Kafka versions anytime consumer restarts, rebalance gets triggered. 
+        a. Now its removed by defining static membership-ID in the consumer. So that consumer after restarting checks its membership-id and starts reading from its partitions
+5. Leader Imbalance:
+ 1. Some of the brokers takes more partitions than others.It causes creating hot-spot across few brokers
+ 2. We can detect this by checking number of partitions each broker is taking and there are admin commands to rebalance the partitions. This make sure even distribution of partitions across the brokers
+
+    
 
 
 
