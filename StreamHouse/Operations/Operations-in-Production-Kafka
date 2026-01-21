@@ -6,3 +6,37 @@
  5. Leader imbalance
 
 2. List operations for each of the issue we have to define in production?
+ 1. Under replicated Partitions(URP): 
+    a)How to know where is the issue?
+     Replication is happening in brokers side. Hence this is the issue with broker side
+    b)What are the possible issues of broker side?
+     1. Either broker is down
+     2. There is disk issue with the broker
+     3. There is network issue with the broker
+    c)Define operations for each of the above issues?
+     1. Find the effected broker using kafka admin commands
+     2. If Broker is down? Restart it
+     3. If disk or network bottleneck do the necessary action
+ 2. Consumer Lag:
+    Operations are
+    1. Check Consumer and verify the following
+        a. Consumed and  processed metrics are low:
+            1. If this is the case, then check any errors in logs
+            2. No, errors consumer slowed down. GC pressure or OS issues. restart should help
+            3. Consumer mayn't be able to process the data efficiently
+            
+        b. Compare the input data received across the partition
+            1. If this is more that confirms that consumer unable to process more. Either scale it vertically or Check whether we can increase the partitions provided there is no stateful operations are not happening in consumer
+3. Disk space exhaustion:
+  How this issue is identified?
+    Who is writing over disk? Broker is writing over the disk. If the disk is full, broker shuts-down and gets restarted
+ What operations has to perform?
+   1. If there is sufficient time we can reduce retention time in disk
+   2. We can also increase the cloud volume space
+   3. We can reassign the partitions such that current brokers high volume partitions can be handled by other brokers which have more space
+     
+
+
+
+        
+
