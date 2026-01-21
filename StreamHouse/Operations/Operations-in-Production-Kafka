@@ -1,0 +1,8 @@
+1. What are the different issues that can arise to the system for which we need to define operations in production Kafka?
+ 1. Under Replicated partitions 
+ 2. Consumer Lag
+ 3. Disk space exhaustion
+ 4. Rebalance Storms
+ 5. Leader imbalance
+
+2. List operations for each of the issue we have to define in production?
