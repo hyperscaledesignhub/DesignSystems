@@ -1,0 +1,35 @@
+Why flink is good for stream processing?
+Flink is good for stream processing because of the following reasons
+1. Flink support distributed snapshots of the stream. This helps in case of restarts of the tasks or nodes to restore the state from current checkpoint. So that it never loose the data
+2. Advanced windowing mechanism of the flink. Where late arriving events are placed in correct window. For ex: An event sent at 10:00PM has arrived at 10:10PM, still flink can place the event in the correct window of 10:00PM
+3. Back pressure handling in Flink. In a given setup of source-operator-Sink, In case Sink is slow, then it instructs source to become slow. 
+What does a flink job consists of?
+Flink job consist of 4 layer representation
+1. Data flow layer
+    This is the DAG representation of the Flink Job. This consists of Source->Operator->Sink
+    Operator side there are 2 types
+    1. Stateless: Map, FlatMap
+    2. Stateful: RollingWindow,..Other Window operators
+2. Graph view
+    1. Stream graph: The graph looking by seeing the code
+    2. Job graph: single instance run time view: source->operator->Sink
+    3. Execution graph: Parallel instance of JobGraph are running
+3. Component View:
+    Following are different components
+    1. Job Manager: Responsible for checkpoint coordination. Detect Job failures and restart the entire job
+    2. Task manager: Responsible for running the execution graph
+    3. State: Filesystem or  RocksDB or In memory
+4. Operation view
+    Represents important operations in the flink
+    1. Checkpoint: Periodically saving the state of the operators 
+    2. Watermarks: These watermarks are inserted by flink at every operator and they measure the event time progress
+    3. Paralleism: How many instances of subtasks we can run defined by the paralleism 
+
+
+
+How a flink job operates internally?
+What is event-time and process-time?
+What are important streaming patterns using flink?
+
+Explain about flink SQL? 
+
