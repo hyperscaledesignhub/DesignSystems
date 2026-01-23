@@ -1,0 +1,13 @@
+Latest trends 
+1. SQL First streaming databases
+    Risingwave and Materialise: 
+    1. This converts the stream into a materialised view.
+    2. Incrementally update the table with the materialised views
+2. Kafka Protocol supported systems
+    Redpanda: Supports Kafka protocol and JVM free, written in C++
+    Wrpastream and AutoMQ: They use disk less Kafka with distributed storage S3 as the backend. Consumer rebalancing and all not needed
+3. Key trends shifting
+    Streaming Agents: They are interacting with streams and detecting anomalies and fixing data issues where LLM as the main processor
+    Apache Iceberg as the Universal Sink: With one click data is landing in Iceberg Tables
+
+
