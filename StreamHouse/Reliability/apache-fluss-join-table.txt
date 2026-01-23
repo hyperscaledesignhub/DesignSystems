@@ -1,0 +1,42 @@
+1. Why Fluss is used as Flink State store? 
+    a. To help in stream join operations Fluss is used as Flink State store
+2. What is the problem with flink state store?
+    1. When flink state is used for joining two streams, let's say 
+    there is order stream and payment streams. We need to join both
+    2. Order stream comes first and we are going store the order in flink state
+    We receive payment stream after let's say 4 minutes. We have to store
+    order stream data into flink state until this time. Which are going
+    to occupy more flink state. Which causes process level issues while checkpointing
+    Increasing GC pressure and increasing virtual memory consumption of the
+    process. Eventually this causes flink to underperform for the realtime requirements
+    This is the problem
+3. How Fluss helps to resolve this problem?
+    1. Now Instead of flink state store we use fluss as the state store
+    2. We define schema in KV Table similar to materialised table that we are going to
+    create after join operation in flink originally. 
+    3. We use fluss client to insert the data into Fluss.
+    Do we insert both stream data? Or single Stream?
+    We insert both streams data 
+    IN that case are we going to insert both streams into 2 separate tables or 
+    a single table?
+        We are going to insert them in a single table. We can insert in two tables as well
+        but again fluss client  need to perform join operation across two tables, which is 
+        again costly operation
+    In that case how a single table can be used to insert all required records from two streams?
+        1. Suppose we got order stream, we insert order,time, payment-id records into the fluss
+        primary key table using fluss client
+        2. We will be getting payment stream, from there we extract payment-id, timestamp 
+        and payment status fields and add to the same table using fluss client
+        3. Primary key table supports partial updates as well. Hence its going to insert the missed 
+        records in the given row
+    Now how flink will know that the complete record of an order including payment status received?
+        1. Flink source is going to subscribe to changelog table. Which is going to send the 
+        Change log events to the subscribers.
+        2. This way flink needs to care about updated records which contains complete joined records of
+        orders and payments
+    Are there any other advantages wih this model?
+        1. Flink become super light weight. Since its no need to bother about the state
+        2. It can focus on buisiness logic
+        3. Since state got externalised, any other flink job also can access the same state
+        from outside
+
