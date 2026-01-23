@@ -33,3 +33,14 @@ What are important streaming patterns using flink?
 
 Explain about flink SQL? 
 
+Explain the shuffle operation in flink and when it happen, does it always happen or only sometimes given a fixed jobgraph?
+
+1. Suppose we have 4 task managers(t1,t2,t3 and t4), and we are doing keyby operator which is causing data of t-1 to be sent to t2,t3 and t4. Similarly data of t-2 to be sent to t-1,t-3 and t-4 similarly for all others, t-3 and t-4. 
+2. This involves using of network IO, serialisation and deserialisation overhead.
+3. We usually prevent this by sending keyed data to topic partitions such that all the required data can be processed without network shuffle. Remember we still need to use keyby() provided if we are doing a stateful operation. Such that underlying state is going to store the state paritioned by key
+4. If we see how Top-N is getting computed, this needs following stream graph
+
+   "source.keyby().process().Windowall(TopNFunction)"
+
+   This needs keyby since process function is going to count the users and store in the state. After that Windowall is going to send to one task manager so that TopNFunction can be executed in one place. This reduces shuffle from 4*3 to 4
+5.  
