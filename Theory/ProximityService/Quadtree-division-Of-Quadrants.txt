@@ -1,5 +1,5 @@
 
-How to derive all quadrants using top left and bottom right coordinates need example with propelr coordinates
+How to derive all quadrants using top left and bottom right coordinates need example with proper coordinates
 Diving into the specifics of spatial indexing! The process of dividing a geographical area into four quadrants is fundamental to systems like Quadtrees and Geohashes, as discussed in the chapter.
 
 When you're given the top-left and bottom-right coordinates of a rectangular region, you can derive the four sub-quadrants by finding the midpoint of both the latitude and longitude ranges.
@@ -16,7 +16,7 @@ So, for a bounding box:
 
 The Top-Left coordinate will have the maximum latitude (Lat_max) and the minimum longitude (Lon_min).
 The Bottom-Right coordinate will have the minimum latitude (Lat_min) and the maximum longitude (Lon_max).
-Let's assume your "propelr coordinates" was a typo and you meant "proper coordinates" or "example coordinates." We'll use a concrete example to illustrate.
+
 
 Step 1: Define the Parent Region's Bounding Box
 Let's define our parent region using its full bounding box:
