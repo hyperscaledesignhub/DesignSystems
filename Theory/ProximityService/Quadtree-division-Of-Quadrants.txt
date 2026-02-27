@@ -1,0 +1,131 @@
+
+How to derive all quadrants using top left and bottom right coordinates need example with propelr coordinates
+Diving into the specifics of spatial indexing! The process of dividing a geographical area into four quadrants is fundamental to systems like Quadtrees and Geohashes, as discussed in the chapter.
+
+When you're given the top-left and bottom-right coordinates of a rectangular region, you can derive the four sub-quadrants by finding the midpoint of both the latitude and longitude ranges.
+
+First, let's clarify what "top-left" and "bottom-right" mean in terms of latitude and longitude:
+
+Latitude (Lat):
+Increases as you go North (towards the top of a map).
+Decreases as you go South (towards the bottom of a map).
+Longitude (Lon):
+Increases as you go East (towards the right of a map).
+Decreases as you go West (towards the left of a map).
+So, for a bounding box:
+
+The Top-Left coordinate will have the maximum latitude (Lat_max) and the minimum longitude (Lon_min).
+The Bottom-Right coordinate will have the minimum latitude (Lat_min) and the maximum longitude (Lon_max).
+Let's assume your "propelr coordinates" was a typo and you meant "proper coordinates" or "example coordinates." We'll use a concrete example to illustrate.
+
+Step 1: Define the Parent Region's Bounding Box
+Let's define our parent region using its full bounding box:
+
+parent_lat_min: Southernmost latitude of the parent region
+parent_lat_max: Northernmost latitude of the parent region
+parent_lon_min: Westernmost longitude of the parent region
+parent_lon_max: Easternmost longitude of the parent region
+If you are only given the top-left (TL_lat, TL_lon) and bottom-right (BR_lat, BR_lon) coordinates, you can map them as follows:
+
+parent_lat_max = TL_lat
+parent_lon_min = TL_lon
+parent_lat_min = BR_lat
+parent_lon_max = BR_lon
+Step 2: Calculate the Midpoints
+To divide the parent region into four equal quadrants, we need to find the mid-latitude and mid-longitude:
+
+mid_lat = (parent_lat_min + parent_lat_max) / 2
+mid_lon = (parent_lon_min + parent_lon_max) / 2
+These mid_lat and mid_lon values represent the horizontal and vertical lines that split the parent region.
+
+Step 3: Derive the Four Quadrants (Children)
+Now, we can define the bounding box (min/max latitude and longitude) for each of the four child quadrants:
+
+1. North-West (NW) Quadrant
+
+This is the upper-left section.
+lat_min = mid_lat
+lat_max = parent_lat_max
+lon_min = parent_lon_min
+lon_max = mid_lon
+(Its Top-Left is (parent_lat_max, parent_lon_min), Bottom-Right is (mid_lat, mid_lon))
+2. North-East (NE) Quadrant
+
+This is the upper-right section.
+lat_min = mid_lat
+lat_max = parent_lat_max
+lon_min = mid_lon
+lon_max = parent_lon_max
+(Its Top-Left is (parent_lat_max, mid_lon), Bottom-Right is (mid_lat, parent_lon_max))
+3. South-West (SW) Quadrant
+
+This is the lower-left section.
+lat_min = parent_lat_min
+lat_max = mid_lat
+lon_min = parent_lon_min
+lon_max = mid_lon
+(Its Top-Left is (mid_lat, parent_lon_min), Bottom-Right is (parent_lat_min, mid_lon))
+4. South-East (SE) Quadrant
+
+This is the lower-right section.
+lat_min = parent_lat_min
+lat_max = mid_lat
+lon_min = mid_lon
+lon_max = parent_lon_max
+(Its Top-Left is (mid_lat, mid_lon), Bottom-Right is (parent_lat_min, parent_lon_max))
+Example: Dividing a Region in San Francisco
+Let's say we have a parent region covering a part of San Francisco.
+
+Given Parent Coordinates:
+
+Top-Left: (37.80, -122.50)
+Bottom-Right: (37.70, -122.40)
+Step 1: Determine Parent Bounding Box
+From the given top-left and bottom-right:
+
+parent_lat_max = 37.80
+parent_lon_min = -122.50
+parent_lat_min = 37.70
+parent_lon_max = -122.40
+Step 2: Calculate Midpoints
+
+mid_lat = (37.70 + 37.80) / 2 = 37.75
+mid_lon = (-122.50 + -122.40) / 2 = -122.45
+Step 3: Derive the Four Quadrants
+
+1. North-West (NW) Quadrant:
+
+lat_min = 37.75
+lat_max = 37.80
+lon_min = -122.50
+lon_max = -122.45
+Top-Left: (37.80, -122.50)
+Bottom-Right: (37.75, -122.45)
+(This quadrant would cover areas like the Golden Gate Bridge approach, parts of the Presidio)
+2. North-East (NE) Quadrant:
+
+lat_min = 37.75
+lat_max = 37.80
+lon_min = -122.45
+lon_max = -122.40
+Top-Left: (37.80, -122.45)
+Bottom-Right: (37.75, -122.40)
+(This quadrant would cover areas like Fisherman's Wharf, Telegraph Hill)
+3. South-West (SW) Quadrant:
+
+lat_min = 37.70
+lat_max = 37.75
+lon_min = -122.50
+lon_max = -122.45
+Top-Left: (37.75, -122.50)
+Bottom-Right: (37.70, -122.45)
+(This quadrant would cover areas like Golden Gate Park, Ocean Beach)
+4. South-East (SE) Quadrant:
+
+lat_min = 37.70
+lat_max = 37.75
+lon_min = -122.45
+lon_max = -122.40
+Top-Left: (37.75, -122.45)
+Bottom-Right: (37.70, -122.40)
+(This quadrant would cover areas like the Mission District, Potrero Hill)
